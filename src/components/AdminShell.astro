@@ -1,0 +1,96 @@
+---
+interface Props {
+  title: string;
+  eyebrow: string;
+  description: string;
+  endpoint: string;
+  view: "overview" | "users" | "activity" | "content" | "editor";
+}
+
+const { title, eyebrow, description, endpoint, view } = Astro.props;
+
+const adminNav = [
+  { href: "/admin/", label: "Overview", view: "overview" },
+  { href: "/admin/users/", label: "Users", view: "users" },
+  { href: "/admin/activity/", label: "Activity", view: "activity" },
+  { href: "/admin/content/", label: "Content", view: "content" },
+  { href: "/admin/editor/", label: "Editor", view: "editor" }
+];
+---
+
+<section
+  class="admin-shell page-enter"
+  data-admin-page
+  data-admin-endpoint={endpoint}
+  data-admin-view={view}
+  aria-labelledby="admin-page-title"
+>
+  <header class="admin-hero">
+    <div>
+      <p class="eyebrow">{eyebrow}</p>
+      <h1 id="admin-page-title">{title}</h1>
+      <p>{description}</p>
+    </div>
+    <div class="admin-hero__aside">
+      <div class="admin-endpoint-card">
+        <span>API route</span>
+        <code>{endpoint}</code>
+      </div>
+      <div class="admin-session-card">
+        <span>Session</span>
+        <strong data-admin-current-user>Checking account...</strong>
+        <button class="button button--subtle" type="button" data-auth-logout hidden>Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="admin-tabs" aria-label="Admin navigation">
+    {
+      adminNav.map((item) => (
+        <a
+          href={item.href}
+          class:list={["admin-tabs__link", { "admin-tabs__link--active": item.view === view }]}
+          aria-current={item.view === view ? "page" : undefined}
+        >
+          {item.label}
+        </a>
+      ))
+    }
+  </nav>
+
+  <section class="auth-alert auth-alert--warning" data-admin-password-warning hidden>
+    <strong>Default admin password is still active.</strong>
+    <span>Change the password from the dashboard before relying on this account.</span>
+    <a class="text-link" href="/dashboard/">Open dashboard</a>
+  </section>
+
+  <section class="auth-state auth-state--loading" data-admin-loading aria-live="polite">
+    Checking your session and loading admin data...
+  </section>
+
+  <section class="auth-state auth-state--locked" data-admin-unauthenticated hidden>
+    <h2>Sign in required</h2>
+    <p>Admin pages load only after the backend confirms your session.</p>
+    <a class="button button--primary" href="/login/">Sign in</a>
+  </section>
+
+  <section class="auth-state auth-state--locked" data-admin-forbidden hidden>
+    <h2>Admin access required</h2>
+    <p>Your current account is authenticated, but the backend did not identify it as an admin user.</p>
+    <a class="button" href="/dashboard/">Back to dashboard</a>
+  </section>
+
+  <section class="auth-state auth-state--unavailable" data-admin-unavailable hidden>
+    <h2>Admin API unavailable</h2>
+    <p data-admin-unavailable-message>
+      The admin backend endpoint could not be reached. No admin data is being faked on this page.
+    </p>
+  </section>
+
+  <div class="admin-content" data-admin-content hidden>
+    <div class="admin-results" data-admin-results></div>
+    <slot />
+  </div>
+</section>
+
+<script src="../scripts/auth-ui.ts"></script>

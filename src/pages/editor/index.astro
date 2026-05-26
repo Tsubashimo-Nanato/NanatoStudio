@@ -1,0 +1,106 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Editor" description="Edit assigned Nanato Studio Markdown content." pageClass="entry-page admin-page editor-page">
+  <section class="admin-shell page-enter" data-editor-page aria-labelledby="editor-title">
+    <header class="admin-hero">
+      <div>
+        <p class="eyebrow">Content editor</p>
+        <h1 id="editor-title">Assigned Markdown workspace</h1>
+        <p>
+          This editor loads only content the backend says you may edit. Changes update source Markdown and require a
+          static rebuild before production output changes.
+        </p>
+      </div>
+      <div class="admin-session-card">
+        <span>Permission model</span>
+        <strong>Admin or assigned maintainer</strong>
+        <a class="button button--subtle" href="/dashboard/">Dashboard</a>
+      </div>
+    </header>
+
+    <section class="auth-alert auth-alert--warning">
+      <strong>Static output note</strong>
+      <span>Saving here edits files under `src/content/`. Run `npm run build` before deploying updated static pages.</span>
+    </section>
+
+    <section class="auth-state auth-state--loading" data-editor-loading aria-live="polite">
+      Loading assigned content from the backend...
+    </section>
+
+    <section class="auth-state auth-state--locked" data-editor-signed-out hidden>
+      <h2>Editor unavailable</h2>
+      <p data-editor-error-message>Sign in or ask an admin to assign content permissions.</p>
+      <div class="auth-action-row">
+        <a class="button button--primary" href="/login/">Sign in</a>
+        <a class="button" href="/dashboard/">Dashboard</a>
+      </div>
+    </section>
+
+    <section class="admin-content" data-editor-list hidden aria-label="Assigned content"></section>
+
+    <section class="editor-workbench">
+      <div class="admin-note-panel">
+        <p class="eyebrow">Source file</p>
+        <h2 data-editor-title>Select a content item</h2>
+        <p data-editor-path>Open an item from the list above to edit Markdown source.</p>
+      </div>
+
+      <form class="editor-form" data-editor-form hidden>
+        <div class="form-status form-status--neutral" data-auth-message aria-live="polite">
+          Editing source Markdown. Production output requires a rebuild after saving.
+        </div>
+        <input type="hidden" name="content_id" />
+        <input type="hidden" name="body_hash" />
+        <div class="editor-toolbar" aria-label="Editor actions">
+          <div>
+            <p class="eyebrow">Live Markdown editor</p>
+            <span data-editor-count>0 words / 0 characters</span>
+          </div>
+          <div class="editor-toolbar__actions">
+            <input class="sr-only" type="file" accept=".md,.mdx,text/markdown,text/plain" data-editor-import />
+            <button class="button" type="button" data-editor-import-trigger>Load Markdown file</button>
+            <button class="button" type="button" data-editor-copy>Copy source</button>
+          </div>
+        </div>
+        <div class="editor-form__grid">
+          <label>
+            Title
+            <input type="text" name="title" required />
+          </label>
+          <label>
+            Category
+            <input type="text" name="category" />
+          </label>
+        </div>
+        <label>
+          Description
+          <input type="text" name="description" />
+        </label>
+        <label>
+          Tags
+          <input type="text" name="tags" placeholder="Comma-separated tags" />
+        </label>
+        <div class="editor-live-grid">
+          <label class="editor-pane editor-pane--source">
+            <span>Markdown source</span>
+            <textarea name="body" rows="28" spellcheck="false"></textarea>
+          </label>
+          <section class="editor-pane editor-pane--preview" aria-label="Live Markdown preview">
+            <div class="editor-pane__header">
+              <span>Live preview</span>
+              <small>Rendered locally in your browser. Save writes source Markdown through FastAPI.</small>
+            </div>
+            <div class="markdown-content editor-preview" data-editor-preview aria-live="polite">
+              Select an editable content item to preview Markdown.
+            </div>
+          </section>
+        </div>
+        <button class="button button--primary" type="submit">Save Markdown source</button>
+      </form>
+    </section>
+  </section>
+
+  <script src="../../scripts/auth-ui.ts"></script>
+</BaseLayout>

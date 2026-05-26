@@ -1,0 +1,64 @@
+---
+import { getCollection } from "astro:content";
+import { blogUrl, docsUrl, publicDocs, sortByOrderThenTitle } from "../utils/content";
+
+const docs = publicDocs(sortByOrderThenTitle(await getCollection("docs")));
+const posts = sortByOrderThenTitle(await getCollection("blog"));
+
+const searchItems = [
+  { href: "/blog/", title: "Blogs", type: "Journal", description: "Editorial notes, experiments, and project logs." },
+  { href: "/projects/", title: "Projects", type: "Hub", description: "Project documentation and technical tracks." },
+  { href: "/about/", title: "About", type: "Page", description: "Studio background and public orientation." },
+  ...docs.map((entry) => ({
+    href: docsUrl(entry),
+    title: entry.data.title,
+    type: "Docs",
+    description: entry.data.description
+  })),
+  ...posts.map((entry) => ({
+    href: blogUrl(entry),
+    title: entry.data.title,
+    type: "Blog",
+    description: entry.data.description
+  })),
+  { href: "/apps/", title: "Apps", type: "Page", description: "Application experiments and tools." },
+  { href: "/login/", title: "Login", type: "Private", description: "Account sign-in with server challenge." },
+  { href: "/register/", title: "Register", type: "Private", description: "Create an account with backend validation." },
+  { href: "/dashboard/", title: "Dashboard", type: "Private", description: "Authenticated account workspace." },
+  { href: "/admin/", title: "Admin", type: "Private", description: "Backend-authenticated administration workspace." }
+];
+---
+
+<form class="site-search" role="search" data-site-search>
+  <label class="site-search__field">
+    <span class="sr-only">Search Nanato Studio</span>
+    <span class="site-search__icon" aria-hidden="true"></span>
+    <input
+      class="site-search__input"
+      type="search"
+      placeholder="Search"
+      autocomplete="off"
+      spellcheck="false"
+      aria-controls="site-search-results"
+      aria-expanded="false"
+      data-site-search-input
+    />
+  </label>
+  <div class="site-search__results" id="site-search-results" data-site-search-results aria-hidden="true" inert hidden>
+    {
+      searchItems.map((item) => (
+        <a
+          class="site-search__result"
+          href={item.href}
+          data-search-item
+          data-search-text={`${item.title} ${item.type} ${item.description}`.toLowerCase()}
+          hidden
+        >
+          <span>{item.title}</span>
+          <small>{item.type}</small>
+        </a>
+      ))
+    }
+    <p class="site-search__empty" data-search-empty hidden>No matches</p>
+  </div>
+</form>

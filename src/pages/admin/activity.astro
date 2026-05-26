@@ -1,0 +1,22 @@
+---
+import AdminShell from "../../components/AdminShell.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Admin Activity" description="Nanato Studio admin activity log." pageClass="entry-page admin-page">
+  <AdminShell
+    eyebrow="Admin / Activity"
+    title="Activity feed"
+    description="Review persisted authentication, user-management, permission, and content events without exposing secrets."
+    endpoint="/api/admin/activity"
+    view="activity"
+  >
+    <section class="admin-note-panel">
+      <p class="eyebrow">Audit trail</p>
+      <h2>Activity data comes from persisted backend logs.</h2>
+      <p>
+        Filter by event type to isolate login failures, content updates, permission changes, or admin user edits.
+      </p>
+    </section>
+  </AdminShell>
+</BaseLayout>

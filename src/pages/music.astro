@@ -1,0 +1,131 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const queue = [
+  {
+    title: "This is where we start",
+    detail: "Dissembly - local source file",
+    state: "Now playing"
+  },
+  {
+    title: "Queue expansion",
+    detail: "Future local tracks can be added beside this source file",
+    state: "Queued"
+  },
+  {
+    title: "Room playback",
+    detail: "Same audio state controls the page and floating record",
+    state: "Queued"
+  }
+];
+---
+
+<BaseLayout
+  title="Music"
+  description="Nanato Studio music room with the current desk loop, queue, and playback settings."
+  pageClass="entry-page music-page"
+>
+  <section class="music-room page-enter" data-audio-player>
+    <div class="music-room__hero motion-hero">
+      <div class="music-room__copy">
+        <p class="eyebrow">Studio Audio</p>
+        <h1>Quiet loops from the studio desk.</h1>
+        <p>
+          Dissembly starts the local music shelf. The floating record stays at the edge of the desk, while this page
+          keeps the queue, volume, and playback state in one quieter place.
+        </p>
+      </div>
+      <article class="music-room__now" aria-label="Current music">
+        <button class="music-room__album" type="button" data-player-toggle aria-label="Play music">
+          <span class="music-page__disc" aria-hidden="true">
+            <canvas class="music-cd-canvas" width="320" height="320" data-cd-canvas></canvas>
+          </span>
+          <span class="music-room__needle"></span>
+        </button>
+        <div class="music-room__track">
+          <span class="music-room__status" data-player-status>paused</span>
+          <h2>This is where we start</h2>
+          <p class="music-room__artist">Dissembly</p>
+          <p><span data-player-time>0:00</span> / <span data-player-duration>0:00</span></p>
+          <button
+            class="music-volume-knob music-room__knob"
+            type="button"
+            data-volume-knob
+            aria-label="Mute or drag left and right to adjust volume"
+            aria-pressed="false"
+          >
+            <span class="sr-only">Volume</span>
+          </button>
+        </div>
+        <div class="music-room__controls" aria-label="Music controls">
+          <button class="music-room__icon-button" type="button" data-player-skip="-15" aria-label="Previous section">
+            <span class="music-widget__icon music-widget__icon--prev" aria-hidden="true"></span>
+          </button>
+          <button class="music-room__play" type="button" data-player-toggle aria-label="Play music">
+            <span data-play-icon aria-hidden="true">play</span>
+          </button>
+          <button class="music-room__icon-button" type="button" data-player-skip="15" aria-label="Next section">
+            <span class="music-widget__icon music-widget__icon--next" aria-hidden="true"></span>
+          </button>
+        </div>
+        <label class="music-room__progress">
+          <span class="sr-only">Playback progress</span>
+          <input type="range" min="0" max="1000" value="0" data-player-progress />
+        </label>
+      </article>
+    </div>
+
+    <div class="music-room__grid">
+      <section class="music-room__panel music-room__queue motion-section" aria-labelledby="music-queue-title">
+        <p class="eyebrow">Queue</p>
+        <h2 id="music-queue-title">Desk loop stack</h2>
+        <div class="music-room__queue-list">
+          {
+            queue.map((item, index) => (
+              <article class:list={["music-room__queue-item", { "music-room__queue-item--active": index === 0 }]}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <h3>{item.title}</h3>
+                  <p>{item.detail}</p>
+                </div>
+                <small>{item.state}</small>
+              </article>
+            ))
+          }
+        </div>
+      </section>
+
+      <section class="music-room__panel music-room__options motion-section" aria-labelledby="music-options-title">
+        <p class="eyebrow">Options</p>
+        <h2 id="music-options-title">Playback behavior</h2>
+        <div class="music-room__option-list">
+          <div>
+            <span>Loop</span>
+            <strong>Enabled</strong>
+          </div>
+          <div>
+            <span>Source</span>
+          <strong>Local audio</strong>
+        </div>
+        <div>
+          <span>Track</span>
+          <strong>Dissembly</strong>
+        </div>
+        <div>
+          <span>Widget</span>
+          <strong>Floating controller</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="music-room__panel music-room__note motion-section" aria-labelledby="music-note-title">
+        <p class="eyebrow">Room note</p>
+        <h2 id="music-note-title">A control that should feel placed, not pasted.</h2>
+        <p>
+          The top navigation opens this room. The record in the corner handles quick playback, and its popout keeps only
+          previous, volume, and next controls so it stays compact.
+        </p>
+      </section>
+    </div>
+  </section>
+</BaseLayout>

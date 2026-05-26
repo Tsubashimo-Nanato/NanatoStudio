@@ -1,0 +1,24 @@
+---
+import AdminShell from "../../components/AdminShell.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Admin Editor" description="Nanato Studio admin content editor shell." pageClass="entry-page admin-page">
+  <AdminShell
+    eyebrow="Admin / Editor"
+    title="Content editor access"
+    description="Open the shared editor for backend-authorized Markdown files and chapter inventory records."
+    endpoint="/api/editor/content"
+    view="editor"
+  >
+    <section class="admin-note-panel">
+      <p class="eyebrow">Editor API active</p>
+      <h2>Use the shared editor for source Markdown changes.</h2>
+      <p>
+        This admin view lists the same backend-authorized items. Open a content item to edit it through `/editor/`,
+        where saves call the matching `/api/editor/content/:id` backend route.
+      </p>
+      <a class="button button--primary" href="/editor/">Open editor</a>
+    </section>
+  </AdminShell>
+</BaseLayout>

@@ -1,0 +1,18 @@
+---
+interface Props {
+  label: string;
+  value?: string;
+  detail: string;
+  href?: string;
+  tone?: "default" | "accent" | "warning";
+}
+
+const { label, value, detail, href, tone = "default" } = Astro.props;
+const Tag = href ? "a" : "article";
+---
+
+<Tag class:list={["admin-card", `admin-card--${tone}`]} href={href}>
+  <span>{label}</span>
+  {value && <strong>{value}</strong>}
+  <p>{detail}</p>
+</Tag>

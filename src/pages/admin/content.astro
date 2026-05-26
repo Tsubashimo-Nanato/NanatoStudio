@@ -1,0 +1,23 @@
+---
+import AdminShell from "../../components/AdminShell.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Admin Content" description="Nanato Studio admin content permissions." pageClass="entry-page admin-page">
+  <AdminShell
+    eyebrow="Admin / Content"
+    title="Content permissions"
+    description="Scan content, assign maintainers, review routes, and open restricted Markdown editing."
+    endpoint="/api/admin/content"
+    view="content"
+  >
+    <section class="admin-note-panel">
+      <p class="eyebrow">Content safety</p>
+      <h2>Scan source content, assign maintainers, and open restricted editing.</h2>
+      <p>
+        Content items and permission changes come from backend endpoints. Maintainer assignments update public
+        frontmatter on file-backed Markdown, while source edits stay restricted to whitelisted content paths.
+      </p>
+    </section>
+  </AdminShell>
+</BaseLayout>

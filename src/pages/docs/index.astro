@@ -1,0 +1,99 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { contentSlug, docsUrl, publicDocs, sortByOrderThenTitle } from "../../utils/content";
+
+const docs = publicDocs(sortByOrderThenTitle(await getCollection("docs")));
+const featuredDoc = docs.find((doc) => contentSlug(doc) === "aiformula");
+const remainingDocs = docs.filter((doc) => contentSlug(doc) !== "aiformula");
+const categoryOrder = ["Projects", "Standalone", "Reference", "Unclassified", "General"];
+const groupedDocs = categoryOrder
+  .map((category) => ({
+    category,
+    docs: remainingDocs.filter((doc) => doc.data.category === category)
+  }))
+  .filter((group) => group.docs.length > 0);
+
+const isArchiveLike = (description: string) => /placeholder|migrated|preserved/i.test(description);
+---
+
+<BaseLayout title="Docs" description="Curated Nanato Studio project manuals, references, and technical notes." pageClass="entry-page docs-index-page">
+  <section class="index-hero page-enter" aria-labelledby="docs-title">
+    <header class="page-heading page-heading--centered">
+      <p class="eyebrow">Knowledge base</p>
+      <h1 id="docs-title">Documentation that stays useful after the project moves on.</h1>
+      <p class="page-heading__lede">
+        Manuals, reference notes, and project pages are organized for focused reading and long-term recall.
+      </p>
+    </header>
+
+    {
+      featuredDoc && (
+        <a class="featured-document" href={docsUrl(featuredDoc)}>
+          <span class="featured-document__label">Featured manual</span>
+          <strong>{featuredDoc.data.title}</strong>
+          <span>{featuredDoc.data.description}</span>
+          <small>Project guide / long-form technical reference</small>
+        </a>
+      )
+    }
+  </section>
+
+  <section class="doc-directory page-enter page-enter--delay-1" aria-label="Documentation directory">
+    {
+      groupedDocs.length > 0 ? (
+        groupedDocs.map((group) => (
+          <section class="doc-group">
+            <div class="doc-group__heading">
+              <p class="eyebrow">{group.category}</p>
+              <h2>{group.category === "Projects" ? "Project notes" : group.category}</h2>
+            </div>
+            <div class="directory-grid">
+              {group.docs.map((doc) => (
+                <a class:list={["directory-card", isArchiveLike(doc.data.description) && "directory-card--quiet"]} href={docsUrl(doc)}>
+                  <span class="directory-card__meta">{isArchiveLike(doc.data.description) ? "Reference note" : doc.data.category}</span>
+                  <strong>{doc.data.title}</strong>
+                  <span>{doc.data.description}</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        ))
+      ) : (
+        <div class="empty-state">
+          <p class="eyebrow">No entries</p>
+          <h2>Documentation will appear here as content is added.</h2>
+          <p>New reference pages will appear here as they are published.</p>
+        </div>
+      )
+    }
+  </section>
+
+  <section class="studio-section studio-section--compact page-enter page-enter--delay-2">
+    <div class="section-kicker">
+      <p class="eyebrow">Structure</p>
+      <h2>Write once, keep it navigable.</h2>
+      <p>
+        Long manuals can live beside smaller project notes while the reading path stays direct and predictable.
+      </p>
+    </div>
+    <div class="mini-stat-grid">
+      <div>
+        <strong>{docs.length}</strong>
+        <span>Total docs</span>
+      </div>
+      <div>
+        <strong>{groupedDocs.length}</strong>
+        <span>Groups</span>
+      </div>
+      {
+        featuredDoc && (
+          <div>
+            <strong>AI</strong>
+            <span>Featured manual</span>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>

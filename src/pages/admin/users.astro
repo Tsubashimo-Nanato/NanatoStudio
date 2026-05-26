@@ -1,0 +1,23 @@
+---
+import AdminShell from "../../components/AdminShell.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Admin Users" description="Nanato Studio admin user management." pageClass="entry-page admin-page">
+  <AdminShell
+    eyebrow="Admin / Users"
+    title="User management"
+    description="List accounts, create users, adjust roles, change active status, and issue temporary passwords."
+    endpoint="/api/admin/users"
+    view="users"
+  >
+    <section class="admin-note-panel">
+      <p class="eyebrow">No password hashes</p>
+      <h2>User operations are enforced by FastAPI.</h2>
+      <p>
+        Password hashes are never exposed. Temporary passwords are accepted only as form submissions and mark the account
+        for password change.
+      </p>
+    </section>
+  </AdminShell>
+</BaseLayout>

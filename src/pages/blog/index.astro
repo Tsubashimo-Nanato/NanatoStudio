@@ -1,0 +1,159 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { blogUrl, formatContentDate, readingTimeLabel } from "../../utils/content";
+
+const posts = [...(await getCollection("blog"))].sort(
+  (left, right) => right.data.date.valueOf() - left.data.date.valueOf()
+);
+
+const featuredPost = posts[0];
+const archivePosts = posts.slice(1);
+
+const bodyFor = (post: (typeof posts)[number]) => ("body" in post && typeof post.body === "string" ? post.body : "");
+const maintainersFor = (post: (typeof posts)[number]) => [
+  ...new Set([...(post.data.maintainers ?? []), ...(post.data.maintainerUsernames ?? [])])
+];
+const uniqueTags = [...new Set(posts.flatMap((post) => post.data.tags))];
+const categories = [...new Set(posts.map((post) => post.data.category))];
+const latestDate = featuredPost ? formatContentDate(featuredPost.data.date) : "No posts yet";
+const writingQueue = [
+  {
+    label: "Upcoming",
+    title: "Project build logs",
+    detail: "Short notes on technical decisions, launch friction, and the work behind Nanato Studio."
+  },
+  {
+    label: "Upcoming",
+    title: "Experiment notes",
+    detail: "Focused write-ups for apps, interface ideas, performance work, and small research threads."
+  },
+  {
+    label: "Upcoming",
+    title: "Design journals",
+    detail: "Practical reflections on making documentation, tools, and reading surfaces feel calmer."
+  }
+];
+---
+
+<BaseLayout title="Blog" description="Editorial technical notes, experiments, and project logs from Nanato Studio." pageClass="entry-page blog-index-page">
+  <section class="blog-journal-hero page-enter" aria-labelledby="blog-title">
+    <div class="blog-journal-hero__copy">
+      <p class="eyebrow">Studio Journal</p>
+      <h1 id="blog-title">Technical notes with a little atmosphere.</h1>
+      <p class="blog-journal-hero__lede">
+        Essays, field notes, experiments, and project logs from the parts of Nanato Studio that are still being shaped.
+      </p>
+      <div class="blog-journal-hero__actions" aria-label="Blog quick links">
+        <a class="button button--primary" href={featuredPost ? blogUrl(featuredPost) : "/blog/"}>Read latest</a>
+        <a class="button button--ghost" href="/docs/aiformula/">AI Formula manual</a>
+      </div>
+    </div>
+
+    <aside class="blog-masthead-card" aria-label="Journal status">
+      <span class="blog-masthead-card__orb" aria-hidden="true"></span>
+      <p class="eyebrow">Current volume</p>
+      <strong>{posts.length}</strong>
+      <span>published note{posts.length === 1 ? "" : "s"}</span>
+      <dl>
+        <div>
+          <dt>Latest</dt>
+          <dd>{latestDate}</dd>
+        </div>
+        <div>
+          <dt>Topics</dt>
+          <dd>{uniqueTags.length || categories.length || 1}</dd>
+        </div>
+      </dl>
+    </aside>
+  </section>
+
+  <section class="blog-feature-section page-enter page-enter--delay-1" aria-labelledby="featured-title">
+    <div class="blog-section-heading">
+      <p class="eyebrow">Latest note</p>
+      <h2 id="featured-title">A sharper place for thoughts between docs and finished work.</h2>
+    </div>
+
+    {
+      featuredPost ? (
+        <a class="blog-featured-post motion-card" href={blogUrl(featuredPost)}>
+          <span class="blog-featured-post__glow" aria-hidden="true"></span>
+          <div class="blog-featured-post__meta">
+            <span>{featuredPost.data.category}</span>
+            <span>{formatContentDate(featuredPost.data.date)}</span>
+            <span>{readingTimeLabel(bodyFor(featuredPost))}</span>
+          </div>
+          <div class="blog-featured-post__content">
+            <strong>{featuredPost.data.title}</strong>
+            <p>{featuredPost.data.description}</p>
+          </div>
+          {
+            maintainersFor(featuredPost).length > 0 && (
+              <p class="maintainer-line maintainer-line--compact">Maintained by {maintainersFor(featuredPost).join(", ")}</p>
+            )
+          }
+          <div class="blog-tag-row" aria-label="Post tags">
+            {(featuredPost.data.tags.length > 0 ? featuredPost.data.tags : ["Studio note"]).map((tag) => (
+              <span>{tag}</span>
+            ))}
+          </div>
+          <span class="blog-featured-post__cta">Read the note</span>
+        </a>
+      ) : (
+        <div class="blog-empty-note">
+          <p class="eyebrow">No published posts</p>
+          <h2>The journal is staged for the first entry.</h2>
+          <p>Publish Markdown or MDX files in the blog content collection when a note is ready.</p>
+        </div>
+      )
+    }
+  </section>
+
+  <section class="blog-journal-grid page-enter page-enter--delay-2" aria-label="Journal archive and planned writing">
+    <div class="blog-archive-panel">
+      <div class="blog-section-heading blog-section-heading--compact">
+        <p class="eyebrow">Archive</p>
+        <h2>Published notes</h2>
+        <p>The archive stays intentionally quiet: easy to scan, date-aware, and separate from the reference-heavy docs area.</p>
+      </div>
+
+      {
+        archivePosts.length > 0 ? (
+          <div class="blog-note-list">
+            {archivePosts.map((post) => (
+              <a class="blog-note-card motion-card" href={blogUrl(post)}>
+                <span class="blog-note-card__date">{formatContentDate(post.data.date)}</span>
+                <div>
+                  <strong>{post.data.title}</strong>
+                  <p>{post.data.description}</p>
+                  {maintainersFor(post).length > 0 && <p class="maintainer-line maintainer-line--compact">Maintained by {maintainersFor(post).join(", ")}</p>}
+                </div>
+                <span class="blog-note-card__meta">{readingTimeLabel(bodyFor(post))}</span>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div class="blog-single-state">
+            <p>Only one note is published right now. The layout keeps the journal feeling deliberate while the archive grows.</p>
+          </div>
+        )
+      }
+    </div>
+
+    <aside class="blog-writing-queue" aria-labelledby="queue-title">
+      <div class="blog-section-heading blog-section-heading--compact">
+        <p class="eyebrow">Writing queue</p>
+        <h2 id="queue-title">Planned, not published</h2>
+      </div>
+      <div class="blog-upcoming-list">
+        {writingQueue.map((item) => (
+          <article class="blog-upcoming-card">
+            <span>{item.label}</span>
+            <h3>{item.title}</h3>
+            <p>{item.detail}</p>
+          </article>
+        ))}
+      </div>
+    </aside>
+  </section>
+</BaseLayout>

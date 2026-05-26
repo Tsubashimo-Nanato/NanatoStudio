@@ -1,0 +1,111 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { contentSlug, docsUrl, publicDocs, sortByOrderThenTitle } from "../../utils/content";
+
+const docs = publicDocs(sortByOrderThenTitle(await getCollection("docs")));
+const aiFormula = docs.find((doc) => contentSlug(doc) === "aiformula");
+const projectIds = ["cooking", "gaming", "embedded", "softwares"];
+const projectDocs = projectIds
+  .map((id) => docs.find((doc) => contentSlug(doc) === id))
+  .filter((doc): doc is (typeof docs)[number] => Boolean(doc));
+
+const projectTracks = [
+  {
+    key: "cooking",
+    label: "Cooking",
+    tone: "Process",
+    summary: "A future project track for structured food, workflow, and reference experiments."
+  },
+  {
+    key: "gaming",
+    label: "Gaming",
+    tone: "Interaction",
+    summary: "A track for browser play, interface experiments, and small game systems."
+  },
+  {
+    key: "embedded",
+    label: "Embedded",
+    tone: "Hardware",
+    summary: "A track for hardware-adjacent notes, runtime constraints, and device work."
+  },
+  {
+    key: "softwares",
+    label: "Softwares",
+    tone: "Tools",
+    summary: "A track for software utilities, platform notes, and engineering surfaces."
+  }
+].map((track) => ({
+  ...track,
+  doc: docs.find((doc) => contentSlug(doc) === track.key)
+}));
+---
+
+<BaseLayout
+  title="Projects"
+  description="Nanato Studio project hub for AI Formula and future technical tracks."
+  pageClass="entry-page projects-page"
+>
+  <section class="projects-hero page-enter" aria-labelledby="projects-title">
+    <div class="projects-hero__copy">
+      <p class="eyebrow">Projects</p>
+      <h1 id="projects-title">Focused project spaces with room to grow.</h1>
+      <p>
+        Manuals, notes, and experiments can connect around a project without turning the header into a directory.
+      </p>
+    </div>
+    <div class="projects-hero__signal" aria-label="Project count">
+      <span>Active focus</span>
+      <strong>AI Formula</strong>
+      <small>{projectDocs.length} additional tracks staged</small>
+    </div>
+  </section>
+
+  {
+    aiFormula && (
+      <section class="project-feature page-enter page-enter--delay-1" aria-labelledby="project-feature-title">
+        <div class="project-feature__media">
+          <img
+            src="/assets/aiformula/images/aiformula-overview.svg"
+            alt="AI Formula overview"
+            width="960"
+            height="540"
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+        <div class="project-feature__copy">
+          <p class="eyebrow">Featured project</p>
+          <h2 id="project-feature-title">{aiFormula.data.title}</h2>
+          <p>{aiFormula.data.description}</p>
+          <div class="project-feature__actions">
+            <a class="button button--primary" href={docsUrl(aiFormula)}>Open manual</a>
+            <a class="button button--ghost" href="/blog/">Find related writing</a>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <section class="project-track-section page-enter page-enter--delay-2" aria-labelledby="project-tracks-title">
+    <div class="blog-section-heading blog-section-heading--compact">
+      <p class="eyebrow">Project tracks</p>
+      <h2 id="project-tracks-title">Staged areas for future work.</h2>
+      <p>
+        These tracks mark the shape of future work while keeping the current public project surface easy to scan.
+      </p>
+    </div>
+
+    <div class="project-track-list">
+      {
+        projectTracks.map((track) => (
+          <a class="project-track-item motion-card" href={track.doc ? docsUrl(track.doc) : "/projects/"}>
+            <span>{track.tone}</span>
+            <strong>{track.label}</strong>
+            <p>{track.doc?.data.description && !/placeholder|migrated/i.test(track.doc.data.description) ? track.doc.data.description : track.summary}</p>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+</BaseLayout>

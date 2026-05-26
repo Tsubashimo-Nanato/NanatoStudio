@@ -1,0 +1,124 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { blogUrl, contentSlug, docsUrl, formatContentDate, publicDocs, readingTimeLabel, sortByOrderThenTitle } from "../utils/content";
+
+const docs = publicDocs(sortByOrderThenTitle(await getCollection("docs")));
+const posts = [...(await getCollection("blog"))].sort(
+  (left, right) => right.data.date.valueOf() - left.data.date.valueOf()
+);
+
+const featuredPost = posts[0];
+const featuredManual = docs.find((doc) => contentSlug(doc) === "aiformula");
+const manualDocs = docs
+  .filter((doc) => contentSlug(doc) !== "aiformula" && !/placeholder|temporary|unclassified/i.test(doc.data.description))
+  .slice(0, 4);
+const fallbackDocs = docs.filter((doc) => contentSlug(doc) !== "aiformula").slice(0, 4);
+const visibleDocs = manualDocs.length > 0 ? manualDocs : fallbackDocs;
+const postBody = featuredPost && "body" in featuredPost && typeof featuredPost.body === "string" ? featuredPost.body : "";
+---
+
+<BaseLayout
+  title="Library"
+  description="Nanato Studio library for writing, project manuals, and durable technical reference."
+  pageClass="entry-page library-page"
+>
+  <section class="library-hero page-enter" aria-labelledby="library-title">
+    <div class="library-hero__copy">
+      <p class="eyebrow">Library</p>
+      <h1 id="library-title">Writing and reference, separated on purpose.</h1>
+      <p>
+        The Library is the public reading desk for Nanato Studio: short notes, long manuals, and featured project
+        references arranged by how people actually read them.
+      </p>
+    </div>
+    <div class="library-hero__index" aria-label="Library sections">
+      <a href="/blog/">
+        <span>Notes</span>
+        <strong>{posts.length}</strong>
+        <small>journal entr{posts.length === 1 ? "y" : "ies"}</small>
+      </a>
+      <a href="/docs/">
+        <span>Manuals</span>
+        <strong>{docs.length}</strong>
+        <small>reference pages</small>
+      </a>
+      <a href="/docs/aiformula/">
+        <span>Featured</span>
+        <strong>AI</strong>
+        <small>Formula manual</small>
+      </a>
+    </div>
+  </section>
+
+  <section class="library-pathways page-enter page-enter--delay-1" aria-label="Library pathways">
+    <article class="library-pathway library-pathway--notes">
+      <p class="eyebrow">Notes / Blog</p>
+      <h2>Editorial writing for things still in motion.</h2>
+      <p>
+        Posts are lighter than manuals: design notes, project logs, observations, and decisions that are worth keeping
+        visible.
+      </p>
+      {
+        featuredPost ? (
+          <a class="library-feature-link motion-card" href={blogUrl(featuredPost)}>
+            <span>{formatContentDate(featuredPost.data.date)} / {readingTimeLabel(postBody)}</span>
+            <strong>{featuredPost.data.title}</strong>
+            <small>{featuredPost.data.description}</small>
+          </a>
+        ) : (
+          <div class="library-feature-link library-feature-link--empty">
+            <span>No public notes yet</span>
+            <strong>The journal is ready.</strong>
+            <small>Published blog Markdown will appear here.</small>
+          </div>
+        )
+      }
+      <a class="text-link" href="/blog/">Open the journal</a>
+    </article>
+
+    <article class="library-pathway library-pathway--manuals">
+      <p class="eyebrow">Manuals / Docs</p>
+      <h2>Reference material for projects and systems.</h2>
+      <p>
+        Documentation is kept as durable reference: manuals, project pages, galleries, and supporting notes with stable
+        URLs.
+      </p>
+      <div class="library-mini-list">
+        {
+          visibleDocs.map((doc) => (
+            <a href={docsUrl(doc)}>
+              <span>{doc.data.category}</span>
+              <strong>{doc.data.title}</strong>
+            </a>
+          ))
+        }
+      </div>
+      <a class="text-link" href="/docs/">Browse all docs</a>
+    </article>
+  </section>
+
+  {
+    featuredManual && (
+      <section class="library-feature-manual page-enter page-enter--delay-2" aria-labelledby="library-featured-manual">
+        <div>
+          <p class="eyebrow">Featured manual</p>
+          <h2 id="library-featured-manual">{featuredManual.data.title}</h2>
+          <p>{featuredManual.data.description}</p>
+          <div class="button-row">
+            <a class="button button--primary" href={docsUrl(featuredManual)}>Read manual</a>
+            <a class="button button--ghost" href="/projects/">View project context</a>
+          </div>
+        </div>
+        <img
+          src="/assets/aiformula/images/aiformula-overview.svg"
+          alt="AI Formula project overview"
+          width="960"
+          height="540"
+          loading="lazy"
+          decoding="async"
+        />
+      </section>
+    )
+  }
+</BaseLayout>

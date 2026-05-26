@@ -1,0 +1,89 @@
+---
+import Navigation from "./Navigation.astro";
+import SearchBox from "./SearchBox.astro";
+---
+
+<header class="site-header" data-site-header>
+  <div class="site-header__inner">
+    <a class="site-brand" href="/" aria-label="Nanato Studio home">
+      <span class="site-brand__mark">NS</span>
+      <span class="site-brand__text">Nanato Studio</span>
+    </a>
+    <Navigation />
+    <div class="site-header__actions">
+      <div class="account-menu" data-account-menu data-auth-state="checking">
+        <button
+          class="account-menu__trigger account-nav__link account-nav__link--strong"
+          type="button"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="account-menu-panel"
+          data-account-menu-toggle
+          data-account-menu-label
+        >
+          Sign in
+        </button>
+        <div class="account-menu__panel" id="account-menu-panel" role="menu" aria-hidden="true" data-account-menu-panel>
+          <a class="account-menu__item" href="/login/" role="menuitem" data-account-guest>Sign in</a>
+          <a class="account-menu__item" href="/register/" role="menuitem" data-account-guest>Sign up</a>
+          <a class="account-menu__item" href="/dashboard/" role="menuitem" data-account-signed-in hidden>Workspace</a>
+          <button class="account-menu__item" type="button" role="menuitem" data-account-signed-in data-account-signout hidden>
+            Sign out
+          </button>
+        </div>
+      </div>
+      <div class="visual-controls visual-controls--palette-menu" aria-label="Visual settings">
+        <button
+          class="theme-toggle"
+          type="button"
+          aria-label="Switch to dark mode"
+          aria-pressed="false"
+          data-theme-toggle
+        >
+          <span class="theme-toggle__sun" aria-hidden="true"></span>
+          <span class="theme-toggle__moon" aria-hidden="true"></span>
+        </button>
+        <div class="palette-popover" aria-label="Palette options">
+          <div class="palette-picker palette-picker--button-list" role="group" aria-label="Color palette">
+            <button class="palette-option" type="button" data-palette-option="paper" aria-pressed="false">
+              <span class="palette-option__dot" aria-hidden="true"></span>
+              <span>Paper</span>
+            </button>
+            <button class="palette-option" type="button" data-palette-option="rain" aria-pressed="false">
+              <span class="palette-option__dot" aria-hidden="true"></span>
+              <span>Rain</span>
+            </button>
+            <button class="palette-option" type="button" data-palette-option="milk" aria-pressed="false">
+              <span class="palette-option__dot" aria-hidden="true"></span>
+              <span>Milk</span>
+            </button>
+            <button class="palette-option" type="button" data-palette-option="hoodie" aria-pressed="false">
+              <span class="palette-option__dot" aria-hidden="true"></span>
+              <span>Hoodie</span>
+            </button>
+            <button class="palette-option" type="button" data-palette-option="sage" aria-pressed="false">
+              <span class="palette-option__dot" aria-hidden="true"></span>
+              <span>Sage</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <button
+        class="site-menu-button"
+        type="button"
+        aria-label="Open navigation menu"
+        aria-controls="site-navigation"
+        aria-expanded="false"
+        data-nav-toggle
+      >
+        <span class="site-menu-button__bar" aria-hidden="true"></span>
+        <span class="site-menu-button__bar" aria-hidden="true"></span>
+        <span class="site-menu-button__bar" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+  <div class="site-header__search-bubble" aria-label="Site search">
+    <SearchBox />
+  </div>
+  <button class="site-nav-backdrop" type="button" aria-label="Close navigation menu" data-nav-close hidden></button>
+</header>

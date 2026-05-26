@@ -1,0 +1,145 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const apps = [
+  {
+    name: "ros2unbag",
+    status: "Released tool",
+    type: "Windows ROS 2 bag inspector",
+    repo: "https://github.com/Tsubashimo-Nanato/ros2unbag",
+    version: "v1.5.1",
+    stack: ["Python", "ROS bags", "CLI", "Optional PySide6 GUI"],
+    description:
+      "A Windows-oriented command-line tool for inspecting ROS bag files offline, listing topics, indexing timestamps, and exporting useful data without playing bags in a full Linux ROS environment.",
+    features: [
+      "Exports CSV, Parquet, SQLite, JSONL, NPZ, raw dumps, image sequences, MP4, PCD, and PLY.",
+      "Includes an interactive shell with topic navigation, tab completion, selected exports, and progress display.",
+      "Supports a view-only GUI timeline shell for offline bag inspection and non-destructive display settings."
+    ],
+    command: "ros2unbag topics .\\my_bag"
+  },
+  {
+    name: "AndroidHealthConnect",
+    status: "Active monorepo",
+    type: "Android client and API server",
+    repo: "https://github.com/Tsubashimo-Nanato/AndroidHealthConnect",
+    version: "0.1.0",
+    stack: ["Kotlin", "Android Health Connect", ".NET 8", "C#"],
+    description:
+      "A compact monorepo for an Android Health Connect client and a small .NET API server, structured for local mobile-health data experiments and service integration work.",
+    features: [
+      "Contains an Android Gradle project under AndroidClient.",
+      "Contains a .NET 8 API project under Server.",
+      "Keeps generated builds, local SDK config, local databases, logs, and downloaded runtimes out of source control."
+    ],
+    command: ".\\gradlew.bat :app:assembleDebug"
+  }
+];
+
+const notes = [
+  {
+    label: "Real repositories",
+    value: `${apps.length}`,
+    detail: "The Apps shelf now lists maintained code instead of planned placeholders."
+  },
+  {
+    label: "Local-first",
+    value: "CLI + mobile",
+    detail: "Both entries are designed around practical development workflows, not decorative demos."
+  },
+  {
+    label: "Source",
+    value: "GitHub",
+    detail: "Each app links directly to its repository for installation, build, and usage details."
+  }
+];
+---
+
+<BaseLayout title="Apps" description="Nanato Studio app shelf for released tools, mobile experiments, and technical utilities." pageClass="entry-page apps-page">
+  <section class="apps-desk page-enter" aria-labelledby="apps-title">
+    <div class="apps-desk__copy">
+      <span class="apps-desk__tab" aria-hidden="true"></span>
+      <p class="eyebrow">Apps shelf</p>
+      <h1 id="apps-title">Small utilities, kept like tools on the desk.</h1>
+      <p>
+        Nanato Studio apps are practical pieces of project infrastructure: offline ROS data inspection, mobile-health
+        experiments, and local-first utilities that are published with source instead of left as notes.
+      </p>
+      <div class="apps-desk__actions" aria-label="App shortcuts">
+        <a class="button button--primary" href={apps[0].repo} target="_blank" rel="noreferrer">Open ros2unbag</a>
+        <a class="button button--secondary" href={apps[1].repo} target="_blank" rel="noreferrer">Open Health Connect</a>
+      </div>
+    </div>
+
+    <div class="apps-desk__objects" aria-label="Published app objects">
+      <a class="apps-desk__note apps-desk__note--ros" href={apps[0].repo} target="_blank" rel="noreferrer">
+        <span>01</span>
+        <strong>{apps[0].name}</strong>
+        <small>offline ROS bag inspector</small>
+      </a>
+      <a class="apps-desk__note apps-desk__note--health" href={apps[1].repo} target="_blank" rel="noreferrer">
+        <span>02</span>
+        <strong>Health Connect</strong>
+        <small>mobile data experiment</small>
+      </a>
+      <span class="apps-desk__strand" aria-hidden="true"></span>
+      <span class="apps-desk__lens" aria-hidden="true"></span>
+    </div>
+  </section>
+
+  <section class="app-tool-shelf page-enter page-enter--delay-1" aria-label="Published and active apps">
+    {
+      apps.map((app, index) => (
+        <article class:list={["app-tool", index === 1 && "app-tool--offset"]}>
+          <span class="app-tool__pin">{String(index + 1).padStart(2, "0")}</span>
+          <div class="app-tool__main">
+            <header class="app-tool__header">
+              <div>
+                <span class="app-tool__status">{app.status}</span>
+                <h2>{app.name}</h2>
+                <p>{app.type}</p>
+              </div>
+              <span class="app-tool__version">{app.version}</span>
+            </header>
+            <p class="app-tool__description">{app.description}</p>
+            <ul class="app-tool__features">
+              {app.features.map((feature) => <li>{feature}</li>)}
+            </ul>
+          </div>
+
+          <aside class="app-tool__side" aria-label={`${app.name} details`}>
+            <div class="app-tool__stack">
+              {app.stack.map((item) => <span>{item}</span>)}
+            </div>
+            <div class="app-tool__command" aria-label={`${app.name} example command`}>
+              <span>Start with</span>
+              <code>{app.command}</code>
+            </div>
+            <a class="text-link app-tool__action" href={app.repo} target="_blank" rel="noreferrer">
+              Open repository
+            </a>
+          </aside>
+        </article>
+      ))
+    }
+  </section>
+
+  <section class="apps-field-notes page-enter page-enter--delay-2" aria-label="Apps summary">
+    <div class="apps-field-notes__intro">
+      <p class="eyebrow">Shelf notes</p>
+      <h2>Published things only.</h2>
+      <p>The Apps shelf now lists real repositories and avoids planned placeholder software.</p>
+    </div>
+    <div class="apps-field-notes__grid">
+      {
+        notes.map((note) => (
+          <article>
+            <span>{note.label}</span>
+            <strong>{note.value}</strong>
+            <p>{note.detail}</p>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+</BaseLayout>

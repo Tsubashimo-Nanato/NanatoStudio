@@ -1,0 +1,37 @@
+<aside class="music-widget" data-portable-player aria-label="Floating music widget">
+  <audio src="/audio/dissembly-this-is-where-we-start.wav" loop preload="metadata" data-audio data-track-title="This is where we start" data-track-artist="Dissembly"></audio>
+  <div class="music-widget__drawer">
+    <div>
+      <strong>This is where we start</strong>
+      <span>Dissembly</span>
+      <small><span data-player-time>0:00</span> / <span data-player-duration>0:00</span></small>
+    </div>
+    <div class="music-widget__actions">
+      <button class="music-widget__button music-widget__icon-button" type="button" data-player-skip="-15" aria-label="Previous section">
+        <span class="music-widget__icon music-widget__icon--prev" aria-hidden="true"></span>
+      </button>
+      <label class="music-widget__progress">
+        <span class="sr-only">Playback progress</span>
+        <input type="range" min="0" max="1000" value="0" data-player-progress />
+      </label>
+      <button class="music-widget__button music-widget__icon-button" type="button" data-player-skip="15" aria-label="Next section">
+        <span class="music-widget__icon music-widget__icon--next" aria-hidden="true"></span>
+      </button>
+      <button
+        class="music-volume-knob music-widget__knob"
+        type="button"
+        data-volume-knob
+        aria-label="Mute or drag diagonally to adjust volume"
+        aria-pressed="false"
+      >
+        <span class="sr-only">Volume</span>
+      </button>
+    </div>
+  </div>
+  <button class="music-widget__record" type="button" data-player-toggle aria-label="Play music">
+    <span class="music-widget__disc" aria-hidden="true">
+      <canvas class="music-cd-canvas" width="320" height="320" data-cd-canvas></canvas>
+    </span>
+    <span class="music-widget__needle" aria-hidden="true"></span>
+  </button>
+</aside>

@@ -1,0 +1,28 @@
+---
+import AdminCard from "../../components/AdminCard.astro";
+import AdminShell from "../../components/AdminShell.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Admin" description="Nanato Studio admin overview." pageClass="entry-page admin-page">
+  <AdminShell
+    eyebrow="Admin"
+    title="Backend control room"
+    description="A focused workspace for account, activity, and content-permission management."
+    endpoint="/api/admin/overview"
+    view="overview"
+  >
+    <section class="admin-note-panel">
+      <p class="eyebrow">Live backend state</p>
+      <h2>Overview metrics come directly from FastAPI.</h2>
+      <p>
+        Counts, recent events, login failures, and content-update activity are loaded from persisted backend tables.
+      </p>
+    </section>
+    <div class="admin-card-grid">
+      <AdminCard label="Users" value="Manage" detail="Open account management." href="/admin/users/" />
+      <AdminCard label="Activity" value="Review" detail="Inspect persisted auth and admin events." href="/admin/activity/" />
+      <AdminCard label="Content" value="Assign" detail="Prepare content maintainers and permissions." href="/admin/content/" />
+    </div>
+  </AdminShell>
+</BaseLayout>

@@ -1,0 +1,176 @@
+---
+import AdminCard from "../components/AdminCard.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const adminCards = [
+  {
+    label: "Admin overview",
+    value: "Overview",
+    detail: "View backend counts, warnings, and recent activity.",
+    href: "/admin/"
+  },
+  {
+    label: "Users",
+    value: "Accounts",
+    detail: "Manage user roles, active status, and password-change flags through admin endpoints.",
+    href: "/admin/users/"
+  },
+  {
+    label: "Activity",
+    value: "Logs",
+    detail: "Review persisted registration, login, logout, and future content activity.",
+    href: "/admin/activity/"
+  },
+  {
+    label: "Content",
+    value: "Permissions",
+    detail: "Assign maintainers and content editing rights.",
+    href: "/admin/content/"
+  }
+];
+---
+
+<BaseLayout title="Dashboard" description="Authenticated Nanato Studio account dashboard." pageClass="entry-page dashboard-page">
+  <section class="dashboard-shell page-enter" data-dashboard-page aria-labelledby="dashboard-title">
+    <header class="dashboard-hero">
+      <div>
+        <p class="eyebrow">Workspace</p>
+        <h1 id="dashboard-title">Your account and editable content surface.</h1>
+        <p>
+          This page reads the active backend session, shows your role, and exposes editor or admin routes only when the
+          API grants access.
+        </p>
+      </div>
+      <div class="dashboard-hero__aside">
+        <div class="admin-endpoint-card">
+          <span>Session API</span>
+          <code>/api/auth/me</code>
+        </div>
+        <button class="button button--subtle" type="button" data-auth-logout hidden>Sign out</button>
+      </div>
+    </header>
+
+    <section class="auth-state auth-state--loading" data-dashboard-loading aria-live="polite">
+      Checking your backend session...
+    </section>
+
+    <section class="auth-state auth-state--locked" data-dashboard-signed-out hidden>
+      <h2>Sign in required</h2>
+      <p data-dashboard-signed-out-message>No active backend session was found.</p>
+      <div class="auth-action-row">
+        <a class="button button--primary" href="/login/">Sign in</a>
+        <a class="button" href="/register/">Create account</a>
+      </div>
+    </section>
+
+    <div data-dashboard-signed-in hidden>
+      <section class="auth-alert auth-alert--warning" data-dashboard-password-warning hidden>
+        <strong>Default admin password is still active.</strong>
+        <span>Change the seeded password before using this account beyond local development.</span>
+      </section>
+
+      <div class="dashboard-grid page-enter page-enter--delay-1">
+        <article class="dashboard-card">
+          <span>Username</span>
+          <strong data-user-field="username">-</strong>
+          <p>Public account handle returned by `/api/auth/me`.</p>
+        </article>
+        <article class="dashboard-card">
+          <span>Email</span>
+          <strong class="dashboard-card__small" data-user-field="email">-</strong>
+          <p>Email is shown only from the authenticated backend response.</p>
+        </article>
+        <article class="dashboard-card">
+          <span>Role</span>
+          <strong data-user-field="role">-</strong>
+          <p>Status: <span data-user-field="status">-</span>. Last login: <span data-user-field="last_login_at">-</span>.</p>
+        </article>
+      </div>
+
+      <section class="dashboard-panel page-enter page-enter--delay-2" data-dashboard-admin hidden>
+        <div>
+          <p class="eyebrow">Admin controls</p>
+          <h2>Admin dashboard routes are active.</h2>
+          <p>
+            These cards route to backend-authenticated admin pages for users, activity, and content permissions.
+          </p>
+        </div>
+        <div class="dashboard-timeline" aria-label="Admin route shortcuts">
+          <span>/admin/</span>
+          <span>/admin/users/</span>
+          <span>/admin/activity/</span>
+          <span>/admin/content/</span>
+        </div>
+      </section>
+
+      <div class="admin-card-grid" data-dashboard-admin hidden>
+        {adminCards.map((card) => <AdminCard {...card} tone="accent" />)}
+      </div>
+
+      <section class="dashboard-panel page-enter page-enter--delay-2" data-dashboard-admin hidden>
+        <div>
+          <p class="eyebrow">Admin summary</p>
+          <h2>Current backend state</h2>
+          <p>Loaded from `/api/admin/overview` for the signed-in admin account.</p>
+        </div>
+        <div class="dashboard-admin-summary" data-dashboard-admin-summary aria-live="polite"></div>
+      </section>
+
+      <section class="dashboard-panel page-enter page-enter--delay-2" data-dashboard-user hidden>
+        <div>
+          <p class="eyebrow">Editable content</p>
+          <h2>Assigned content is managed through the editor workspace.</h2>
+          <p>
+            The editor loads only content the backend grants to your account. Source Markdown changes require a static
+            rebuild before production output changes.
+          </p>
+        </div>
+        <div class="dashboard-timeline" aria-label="Editor API status">
+          <span>Backend enforced</span>
+          <span>Maintainer scoped</span>
+          <span>Static rebuild required</span>
+        </div>
+        <a class="button button--primary" href="/editor/">Open editor</a>
+      </section>
+
+      <section class="dashboard-panel page-enter page-enter--delay-3" data-dashboard-user hidden>
+        <div>
+          <p class="eyebrow">Assigned work</p>
+          <h2>Your editable content</h2>
+          <p>Only content granted to your account by the backend appears here.</p>
+        </div>
+        <div data-dashboard-user-content aria-live="polite"></div>
+      </section>
+
+      <section class="dashboard-panel dashboard-panel--form page-enter page-enter--delay-3">
+        <div>
+          <p class="eyebrow">Password</p>
+          <h2>Change password</h2>
+          <p>
+            This form submits directly to `/api/auth/change-password`. Password values are not stored by the frontend.
+          </p>
+        </div>
+        <form class="auth-form auth-form--stacked compact-form" data-password-change-form novalidate>
+          <div class="form-status form-status--neutral" data-auth-message aria-live="polite">
+            Use this after signing in, especially for the seeded admin account.
+          </div>
+          <label>
+            Current password
+            <input type="password" name="current_password" autocomplete="current-password" required />
+          </label>
+          <label>
+            New password
+            <input type="password" name="new_password" autocomplete="new-password" minlength="8" required />
+          </label>
+          <label>
+            Confirm new password
+            <input type="password" name="confirm_new_password" autocomplete="new-password" minlength="8" required />
+          </label>
+          <button class="button button--primary" type="submit">Update password</button>
+        </form>
+      </section>
+    </div>
+  </section>
+
+  <script src="../scripts/auth-ui.ts"></script>
+</BaseLayout>

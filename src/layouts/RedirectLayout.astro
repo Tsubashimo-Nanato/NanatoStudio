@@ -1,0 +1,27 @@
+---
+interface Props {
+  title: string;
+  destination: string;
+}
+
+const { title, destination } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="refresh" content={`0; url=${destination}`} />
+    <link rel="canonical" href={destination} />
+    <title>{title} | Nanato Studio</title>
+    <script is:inline>
+      window.location.replace(document.querySelector("link[rel='canonical']").href);
+    </script>
+  </head>
+  <body>
+    <main>
+      <p>Redirecting to <a href={destination}>{destination}</a>.</p>
+    </main>
+  </body>
+</html>

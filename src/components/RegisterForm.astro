@@ -1,0 +1,83 @@
+---
+---
+
+<div class="auth-card auth-card--interactive">
+  <div class="auth-card__header">
+    <span>Nanato Studio account</span>
+    <strong>Create account</strong>
+  </div>
+
+  <form class="auth-form auth-form--stacked" data-auth-form data-auth-mode="register" novalidate>
+    <div class="form-status form-status--neutral" data-auth-message aria-live="polite">
+      Registration is validated by the backend before the account is created.
+    </div>
+
+    <label>
+      Username
+      <input type="text" name="username" autocomplete="username" placeholder="your-username" required />
+    </label>
+
+    <label>
+      Email
+      <input type="email" name="email" autocomplete="email" placeholder="you@example.com" required />
+    </label>
+
+    <label>
+      Confirm email
+      <input type="email" name="confirm_email" autocomplete="email" placeholder="you@example.com" required />
+    </label>
+
+    <label>
+      Password
+      <input type="password" name="password" autocomplete="new-password" placeholder="At least 8 characters" required />
+    </label>
+
+    <label>
+      Confirm password
+      <input type="password" name="confirm_password" autocomplete="new-password" placeholder="Repeat password" required />
+    </label>
+
+    <fieldset class="challenge-box" data-challenge-box>
+      <legend>Human verification</legend>
+      <div class="challenge-box__question">
+        <span data-challenge-question>Loading challenge...</span>
+        <button class="text-button" type="button" data-challenge-reload>Retry challenge</button>
+      </div>
+      <input type="hidden" name="challenge_id" data-challenge-id />
+      <label>
+        Answer
+        <input
+          type="text"
+          name="challenge_answer"
+          inputmode="numeric"
+          autocomplete="off"
+          placeholder="Type the answer"
+          required
+        />
+      </label>
+    </fieldset>
+
+    <button class="button button--primary auth-submit" type="submit" data-auth-submit>Create account</button>
+  </form>
+
+  <details class="api-debug-panel" data-api-diagnostics>
+    <summary>Local API diagnostics</summary>
+    <div class="api-debug-panel__body">
+      <p>API base: <code data-api-base>Resolving...</code></p>
+      <p>Mode: <code data-api-mode>Resolving...</code></p>
+      <button class="button button--subtle" type="button" data-api-debug-check>Check backend</button>
+      <p class="api-debug-panel__result api-debug-panel__result--neutral" data-api-debug-result aria-live="polite">
+        Use this when the challenge says unavailable.
+      </p>
+    </div>
+  </details>
+
+  <div class="auth-card__footer" aria-label="Registration links">
+    <p class="auth-card__note">
+      Already have an account? <a href="/login/">Sign in</a>.
+    </p>
+    <a class="text-link" href="/">Back to public site</a>
+  </div>
+</div>
+
+<script src="../scripts/auth-ui.ts"></script>

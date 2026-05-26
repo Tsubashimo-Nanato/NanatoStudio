@@ -1,0 +1,24 @@
+---
+import AuthForm from "../components/AuthForm.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Login" description="Sign in to Nanato Studio with the FastAPI account backend." pageClass="entry-page login-page">
+  <section class="utility-hero auth-shell page-enter" aria-labelledby="login-title">
+    <div class="utility-copy">
+      <p class="eyebrow">Account access</p>
+      <h1 id="login-title">Sign in to the studio workspace.</h1>
+      <p>
+        The form requests a server-generated challenge, sends credentials to the FastAPI backend, and uses the returned
+        HttpOnly session cookie for authenticated pages.
+      </p>
+      <div class="status-row" aria-label="Login behavior">
+        <span>Server challenge</span>
+        <span>HttpOnly session</span>
+        <span>Role-aware redirect</span>
+      </div>
+    </div>
+
+    <AuthForm />
+  </section>
+</BaseLayout>

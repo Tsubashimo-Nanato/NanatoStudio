@@ -1,0 +1,131 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { contentSlug, docsUrl, publicDocs, sortByOrderThenTitle } from "../utils/content";
+
+const docs = publicDocs(sortByOrderThenTitle(await getCollection("docs")));
+const posts = [...(await getCollection("blog"))].sort(
+  (left, right) => right.data.date.valueOf() - left.data.date.valueOf()
+);
+const aiFormula = docs.find((doc) => contentSlug(doc) === "aiformula");
+const featuredDocs = [aiFormula, ...docs.filter((doc) => contentSlug(doc) !== "aiformula")]
+  .filter((doc): doc is (typeof docs)[number] => Boolean(doc))
+  .slice(0, 4);
+const latestPost = posts[0];
+const latestPostTitle = latestPost?.data.title === "Blog" ? "Studio Log" : latestPost?.data.title;
+const latestPostDescription =
+  latestPost?.data.description === "Original MkDocs blog placeholder preserved as the first Astro blog entry."
+    ? "Notes from the rebuild: architecture, writing workflow, and the shape of the studio."
+    : latestPost?.data.description;
+
+const destinations = [
+  { href: "/blog/", label: "Blogs", detail: `${posts.length} entries` },
+  { href: "/projects/", label: "Projects", detail: "Project hub" },
+  { href: "/apps/", label: "Apps", detail: "Lab space" },
+  { href: "/about/", label: "About", detail: "Studio context" },
+  { href: "/docs/aiformula/", label: "AI Formula", detail: "Featured manual" }
+];
+---
+
+<BaseLayout
+  title="Nanato Studio"
+  description="Nanato Studio is a personal technical site for project manuals, engineering notes, experiments, and studio systems."
+  pageClass="entry-page home-page"
+>
+  <section class="studio-hero page-enter" aria-labelledby="home-title">
+    <div class="studio-hero__copy">
+      <p class="eyebrow">Personal technical studio</p>
+      <h1 id="home-title">A calm place for technical work to stay legible.</h1>
+      <p class="studio-hero__lede">
+        Nanato Studio collects project manuals, engineering notes, experiments, and tools with a bias toward clarity,
+        restraint, and durable context.
+      </p>
+      <div class="button-row studio-hero__actions">
+        <a class="button button--primary" href="/blog/">Read the Blogs</a>
+        <a class="button" href="/projects/">View Projects</a>
+      </div>
+      <nav class="studio-quick-links" aria-label="Primary destinations">
+        {
+          destinations.map((item) => (
+            <a href={item.href}>
+              <span>{item.label}</span>
+              <small>{item.detail}</small>
+            </a>
+          ))
+        }
+      </nav>
+    </div>
+
+    <div class="studio-visual" aria-label="Nanato Studio project preview">
+      <img
+        src="/assets/aiformula/images/landing-hero.svg"
+        alt="Abstract technical interface for AI Formula documentation"
+        width="1200"
+        height="780"
+        decoding="async"
+        fetchpriority="high"
+      />
+      <div class="studio-visual__dock" aria-hidden="true">
+        <span>Docs</span>
+        <span>Notes</span>
+        <span>Lab</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="home-feature-strip page-enter page-enter--delay-1" aria-label="Studio highlights">
+    <a class="feature-tile feature-tile--wide" href="/docs/aiformula/">
+      <span class="feature-tile__meta">Featured manual</span>
+      <strong>AI Formula Onboarding</strong>
+      <span>Chaptered robotics documentation with references, diagrams, and setup notes.</span>
+    </a>
+    <a class="feature-tile" href="/blog/">
+      <span class="feature-tile__meta">Latest writing</span>
+      <strong>{latestPostTitle ?? "Studio notes"}</strong>
+      <span>{latestPostDescription ?? "A place for project commentary and design decisions."}</span>
+    </a>
+  </section>
+
+  <section class="studio-section page-enter page-enter--delay-2" aria-labelledby="studio-work-title">
+    <div class="section-kicker">
+      <p class="eyebrow">Working surface</p>
+      <h2 id="studio-work-title">Different kinds of work get different reading paths.</h2>
+      <p>
+        Essays stay editorial, manuals stay reference-heavy, projects get their own stage, and apps remain lightweight.
+      </p>
+    </div>
+
+    <div class="studio-card-grid">
+      {
+        featuredDocs.map((doc) => (
+          <a class="studio-card" href={docsUrl(doc)}>
+            <span class="studio-card__meta">{doc.data.category}</span>
+            <strong>{doc.data.title}</strong>
+            <span>{doc.data.description}</span>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="studio-section studio-section--split page-enter page-enter--delay-3">
+    <div class="studio-panel studio-panel--dark">
+      <p class="eyebrow">Lab</p>
+      <h2>Apps and experiments live beside the writing, not below it.</h2>
+      <p>
+        Small tools should feel fast, purposeful, and tied to the project material around them.
+      </p>
+      <a class="text-link" href="/apps/">Visit Apps</a>
+    </div>
+
+    <div class="studio-panel">
+      <p class="eyebrow">Blogs</p>
+      <h2>Writing and reference stay close without becoming the same thing.</h2>
+      <p>
+        Blog posts carry the thinking. Docs carry durable reference, and project pages keep manuals discoverable without
+        turning the header into a directory.
+      </p>
+      <a class="text-link" href="/blog/">Open Blogs</a>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,105 @@
+---
+import { ClientRouter } from "astro:transitions";
+import Footer from "../components/Footer.astro";
+import Header from "../components/Header.astro";
+import MusicWidget from "../components/MusicWidget.astro";
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description?: string;
+  pageClass?: string;
+}
+
+const {
+  title,
+  description = "Nanato Studio technical writing, projects, and documentation.",
+  pageClass = ""
+} = Astro.props;
+
+const pageTitle = title === "Nanato Studio" ? title : `${title} | Nanato Studio`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <script is:inline>
+      (() => {
+        const readCookie = (name) => {
+          const prefix = `${encodeURIComponent(name)}=`;
+          const pair = document.cookie
+            .split(";")
+            .map((item) => item.trim())
+            .find((item) => item.startsWith(prefix));
+          if (!pair) return null;
+          try {
+            return decodeURIComponent(pair.slice(prefix.length));
+          } catch {
+            return null;
+          }
+        };
+
+        try {
+          const themeStorageKey = "nanato-theme";
+          const paletteStorageKey = "nanato-palette";
+          const saved = localStorage.getItem(themeStorageKey) ?? readCookie(themeStorageKey);
+          const savedPalette = localStorage.getItem(paletteStorageKey) ?? readCookie(paletteStorageKey);
+          const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          const theme = saved === "light" || saved === "dark" ? saved : prefersDark ? "dark" : "light";
+          const palette = ["paper", "rain", "milk", "hoodie", "sage"].includes(savedPalette ?? "")
+            ? savedPalette
+            : "paper";
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.dataset.mode = theme;
+          document.documentElement.dataset.palette = palette;
+        } catch {
+          const saved = readCookie("nanato-theme");
+          const savedPalette = readCookie("nanato-palette");
+          const theme = saved === "light" || saved === "dark" ? saved : "light";
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.dataset.mode = theme;
+          document.documentElement.dataset.palette = ["paper", "rain", "milk", "hoodie", "sage"].includes(savedPalette ?? "")
+            ? savedPalette
+            : "paper";
+        }
+      })();
+    </script>
+    <ClientRouter />
+    <title>{pageTitle}</title>
+  </head>
+  <body class={pageClass}>
+    <div class="ambient" aria-hidden="true">
+      <span class="strand strand-a"></span>
+      <span class="strand strand-b"></span>
+      <span class="glasses-ring ring-a"></span>
+      <span class="glasses-ring ring-b"></span>
+      <span class="drift-object drift-paper-a"></span>
+      <span class="drift-object drift-paper-b"></span>
+      <span class="drift-object drift-star-a"></span>
+      <span class="drift-object drift-ring-a"></span>
+    </div>
+    <div class="room-light-layer" aria-hidden="true" data-room-light-layer></div>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div transition:persist="site-header">
+      <Header />
+    </div>
+    <main class="site-main" id="main-content" transition:animate="none">
+      <slot />
+    </main>
+    <div
+      id="page-exit-stage-root"
+      class="page-exit-stage"
+      aria-hidden="true"
+      data-page-exit-stage
+      transition:persist="page-exit-stage"
+    ></div>
+    <Footer />
+    <div class="music-widget-persist" transition:persist="music-widget">
+      <MusicWidget />
+    </div>
+    <script src="../scripts/navigation.ts"></script>
+  </body>
+</html>

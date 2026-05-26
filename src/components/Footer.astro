@@ -1,0 +1,37 @@
+---
+const year = new Date().getFullYear();
+
+const publicLinks = [
+  { href: "/blog/", label: "Blogs" },
+  { href: "/projects/", label: "Projects" },
+  { href: "/apps/", label: "Apps" },
+  { href: "/about/", label: "About" }
+];
+
+const utilityLinks = [
+  { href: "/login/", label: "Login" },
+  { href: "/register/", label: "Register" },
+  { href: "/dashboard/", label: "Dashboard" },
+  { href: "/admin/", label: "Admin" },
+  { href: "/contact/", label: "Contact" }
+];
+---
+
+<footer class="site-footer">
+  <div class="site-footer__inner">
+    <div class="site-footer__identity">
+      <a class="site-footer__brand" href="/" aria-label="Nanato Studio home">Nanato Studio</a>
+      <p>A personal technical studio for manuals, notes, projects, and small tools.</p>
+    </div>
+    <div class="site-footer__link-groups">
+      <nav class="site-footer__nav" aria-label="Footer navigation">
+        {publicLinks.map((link) => <a href={link.href}>{link.label}</a>)}
+      </nav>
+      <nav class="site-footer__utility" aria-label="Private and utility links">
+        <span>Private</span>
+        {utilityLinks.map((link) => <a href={link.href}>{link.label}</a>)}
+      </nav>
+    </div>
+    <p class="site-footer__meta">{year}</p>
+  </div>
+</footer>

@@ -1,0 +1,135 @@
+---
+type NavItem = {
+  href: string;
+  label: string;
+  section: "home" | "blogs" | "projects" | "apps" | "music" | "about";
+};
+
+type ProjectLink = {
+  href: string;
+  label: string;
+  description: string;
+};
+
+const links: NavItem[] = [
+  { href: "/", label: "Home", section: "home" },
+  { href: "/blog/", label: "Blogs", section: "blogs" },
+  { href: "/projects/", label: "Projects", section: "projects" },
+  { href: "/apps/", label: "Apps", section: "apps" },
+  { href: "/music/", label: "Music", section: "music" },
+  { href: "/about/", label: "About", section: "about" }
+];
+
+const projectLinks: ProjectLink[] = [
+  { href: "/projects/", label: "Project index", description: "Showcase and public tracks" },
+  { href: "/docs/aiformula/", label: "AI Formula", description: "Robotics onboarding manual" },
+  { href: "/projects/cooking/", label: "Cooking", description: "Food systems and experiments" },
+  { href: "/projects/gaming/", label: "Gaming", description: "Games, tooling, and logs" },
+  { href: "/projects/embedded/", label: "Embedded", description: "Hardware and runtime notes" },
+  { href: "/projects/softwares/", label: "Softwares", description: "Software utilities and builds" }
+];
+
+const currentPath = Astro.url.pathname;
+
+function normalizePath(path: string): string {
+  if (path === "/") return "/";
+  return path.endsWith("/") ? path : `${path}/`;
+}
+
+function isExactPath(href: string): boolean {
+  return normalizePath(currentPath) === normalizePath(href);
+}
+
+function isItemActive(item: NavItem): boolean {
+  const normalizedCurrent = normalizePath(currentPath);
+  if (item.section === "home") return normalizedCurrent === "/";
+  if (item.section === "blogs") return normalizedCurrent.startsWith("/blog/");
+  if (item.section === "projects") {
+    return normalizedCurrent.startsWith("/projects/") || normalizedCurrent.startsWith("/docs/aiformula/");
+  }
+  if (item.section === "music") return normalizedCurrent.startsWith("/music/");
+  return normalizedCurrent.startsWith(normalizePath(item.href));
+}
+---
+
+<div class="site-nav-panel motion-nav-menu" id="site-navigation" data-nav-panel>
+  <nav class="site-nav" aria-label="Primary navigation">
+    <ul class="site-nav__list">
+      {
+        links.map((link) => {
+          const isActive = isItemActive(link);
+          const isCurrent = isExactPath(link.href);
+
+          return (
+            <li
+              class:list={[
+                "site-nav__item",
+                {
+                  "site-nav__item--active": isActive
+                }
+              ]}
+            >
+              <div class="site-nav__row">
+                {
+                  link.section === "projects" ? (
+                    <div class="project-menu" data-project-menu-root>
+                      <button
+                        class:list={["site-nav__link", "site-nav__link--button", { "site-nav__link--active": isActive }]}
+                        type="button"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        aria-controls="project-menu-panel"
+                        aria-current={isCurrent ? "page" : isActive ? "location" : undefined}
+                        data-project-menu-toggle
+                      >
+                        {link.label}
+                        <span class="project-menu__chevron" aria-hidden="true"></span>
+                      </button>
+                      <div
+                        class="project-menu__panel"
+                        id="project-menu-panel"
+                        data-project-menu-panel
+                        aria-label="Project menu"
+                        aria-hidden="true"
+                      >
+                        <div class="project-menu__header">
+                          <span>Projects</span>
+                          <strong>Focused workspaces</strong>
+                        </div>
+                        <div class="project-menu__links">
+                          {projectLinks.map((project) => (
+                            <a
+                              class:list={[
+                                "project-menu__link",
+                                { "project-menu__link--active": normalizePath(currentPath).startsWith(normalizePath(project.href)) }
+                              ]}
+                              href={project.href}
+                              data-page-transition-link
+                              data-project-menu-link
+                            >
+                              <span>{project.label}</span>
+                              <small>{project.description}</small>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <a
+                      class:list={["site-nav__link", { "site-nav__link--active": isActive }]}
+                      href={link.href}
+                      data-page-transition-link
+                      aria-current={isCurrent ? "page" : isActive ? "location" : undefined}
+                    >
+                      {link.label}
+                    </a>
+                  )
+                }
+              </div>
+            </li>
+          );
+        })
+      }
+    </ul>
+  </nav>
+</div>

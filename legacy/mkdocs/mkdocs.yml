@@ -1,0 +1,90 @@
+site_name: Nanato Studio
+site_description: A modern demo site built with MkDocs Material
+site_url: https://placeholder.example.com
+
+theme:
+  name: material
+  language: en
+  font: false
+  custom_dir: overrides
+  palette:
+    - scheme: default
+      primary: teal
+      accent: blue
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    - navigation.tracking
+    - navigation.top
+    - toc.integrate
+    - content.code.copy
+    - content.tabs.link
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search
+
+exclude_docs: |
+  assets/aiformula/text/*.md
+  assets/aiformula/text/Backup/*.md
+  assets/aiformula/text/Archived/*.md
+  projects/aiformula/*.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: docs
+      check_paths: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/nav-focus.js
+
+extra:
+  top_tabs_dropdowns:
+    Projects:
+      - title: AI Formula
+        url: projects/aiformula/
+      - title: Cooking
+        url: projects/cooking/
+      - title: Gaming
+        url: projects/gaming/
+      - title: Embedded
+        url: projects/embedded/
+      - title: Softwares
+        url: projects/softwares/
+
+nav:
+  - Home: index.md
+  - About: about/index.md
+  - Projects:
+      - Overview: projects/index.md
+      - AI Formula: projects/aiformula.md
+      - Cooking: projects/cooking.md
+      - Gaming: projects/gaming.md
+      - Embedded: projects/embedded.md
+      - Softwares: projects/softwares.md
+  - Blog: blog/index.md
+  - Gallery: gallery/index.md
+  - C: c/index.md
+  - Contact: contact/index.md

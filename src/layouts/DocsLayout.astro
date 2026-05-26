@@ -1,0 +1,329 @@
+---
+import { getCollection, render, type CollectionEntry } from "astro:content";
+import BaseLayout from "./BaseLayout.astro";
+import { contentSlug, docsUrl, publicDocs, sortByOrderThenTitle, textSlug } from "../utils/content";
+
+interface Props {
+  doc: CollectionEntry<"docs">;
+  headings: Array<{ depth: number; slug: string; text: string }>;
+}
+
+const { doc, headings } = Astro.props;
+const allDocs = sortByOrderThenTitle(await getCollection("docs"));
+const docs = publicDocs(allDocs);
+const aiformulaChapterEntries = contentSlug(doc) === "aiformula"
+  ? sortByOrderThenTitle(allDocs.filter((entry) => entry.id.startsWith("aiformula-chapters/")))
+  : [];
+const renderedManualChapters = await Promise.all(
+  aiformulaChapterEntries.map(async (entry) => {
+    const rendered = await render(entry);
+    const anchor = textSlug(entry.data.title);
+    const maintainers = [...new Set([...(entry.data.maintainers ?? []), ...(entry.data.maintainerUsernames ?? [])])];
+
+    return {
+      entry,
+      Content: rendered.Content,
+      anchor,
+      title: entry.data.title,
+      description: entry.data.description,
+      order: entry.data.order,
+      sectionCount: rendered.headings.filter((heading) => heading.depth <= 3).length,
+      maintainers,
+      editRoute: `/docs/aiformula/#${anchor}`
+    };
+  })
+);
+const chapters = renderedManualChapters.length > 0
+  ? renderedManualChapters.map((chapter) => ({ depth: 2, slug: chapter.anchor, text: chapter.title }))
+  : headings.filter((heading) => heading.depth === 2);
+const sectionCount = renderedManualChapters.length > 0
+  ? renderedManualChapters.reduce((total, chapter) => total + chapter.sectionCount, 0)
+  : headings.filter((heading) => heading.depth <= 3).length;
+const currentIndex = docs.findIndex((entry) => entry.id === doc.id);
+const previousDoc = currentIndex > 0 ? docs[currentIndex - 1] : undefined;
+const nextDoc = currentIndex >= 0 && currentIndex < docs.length - 1 ? docs[currentIndex + 1] : undefined;
+const sourceLabel = doc.data.source === "mkdocs-migration" ? "Reference file" : "Studio source";
+const isLongManual = chapters.length >= 8;
+const hasManualChapters = renderedManualChapters.length > 0;
+const pageClass = `docs-page${isLongManual ? " docs-page--manual" : ""}${hasManualChapters ? " docs-page--manual-reader" : ""}`;
+const chapterPreview = chapters.slice(0, 6);
+const maintainers = [...new Set([...(doc.data.maintainers ?? []), ...(doc.data.maintainerUsernames ?? [])])];
+
+function editorRoute(route: string): string {
+  return `/editor/?route=${encodeURIComponent(route)}`;
+}
+---
+
+<BaseLayout title={doc.data.title} description={doc.data.description} pageClass={pageClass}>
+  {
+    chapters.length > 0 && !hasManualChapters && (
+      <aside class="docs-rail" data-docs-rail aria-label="Page chapters">
+        <button
+          class="docs-rail__toggle"
+          type="button"
+          aria-controls="docs-rail-panel"
+          aria-expanded="false"
+          data-docs-rail-toggle
+          title="Page chapters"
+        >
+          <span class="docs-rail__toggle-bar"></span>
+          <span class="docs-rail__toggle-bar"></span>
+          <span class="docs-rail__toggle-bar"></span>
+        </button>
+        <nav
+          class="docs-rail__panel"
+          id="docs-rail-panel"
+          data-docs-rail-panel
+          aria-label="Page chapters"
+          aria-hidden="true"
+          inert
+          hidden
+        >
+          <p class="docs-rail__title">Chapters</p>
+          <div class="docs-rail__links">
+            {chapters.map((chapter, index) => (
+              <a
+                class:list={["docs-rail__link", { "docs-rail__link--active": index === 0 }]}
+                href={`#${chapter.slug}`}
+                aria-current={index === 0 ? "location" : undefined}
+                data-docs-rail-link
+              >
+                {chapter.text}
+              </a>
+            ))}
+          </div>
+        </nav>
+      </aside>
+    )
+  }
+  <div class:list={["docs-shell", { "docs-shell--manual-reader": hasManualChapters }]}>
+    {
+      hasManualChapters && (
+        <aside class="manual-outline page-enter page-enter--delay-1" aria-label="AI Formula chapters">
+          <div class="manual-outline__inner">
+            <div class="manual-outline__header">
+              <span>Manual index</span>
+              <strong>{chapters.length} chapters</strong>
+            </div>
+            <nav class="manual-outline__links" aria-label="Manual chapter navigation">
+              {chapters.map((chapter, index) => (
+                <a
+                  class:list={["manual-outline__link", { "manual-outline__link--active": index === 0 }]}
+                  href={`#${chapter.slug}`}
+                  aria-current={index === 0 ? "location" : undefined}
+                  data-manual-outline-link
+                >
+                  <span>{String(index).padStart(2, "0")}</span>
+                  <strong>{chapter.text}</strong>
+                </a>
+              ))}
+            </nav>
+          </div>
+        </aside>
+      )
+    }
+    <article class:list={["docs-article", { "docs-article--manual-reader": hasManualChapters }]}>
+      <header class:list={["docs-article__header", "page-enter", { "manual-hero": hasManualChapters }]}>
+        {
+          hasManualChapters ? (
+            <>
+              <div class="manual-hero__copy">
+                <div class="article-kicker">
+                  <p class="eyebrow">{doc.data.category}</p>
+                  <span>{sourceLabel}</span>
+                </div>
+                <h1>{doc.data.title}</h1>
+                {doc.data.description && <p class="page-heading__lede">{doc.data.description}</p>}
+                {
+                  maintainers.length > 0 && (
+                    <p class="maintainer-line">
+                      Maintained by {maintainers.map((maintainer, index) => (
+                        <>
+                          <span>{maintainer}</span>
+                          {index < maintainers.length - 1 ? ", " : ""}
+                        </>
+                      ))}
+                    </p>
+                  )
+                }
+              </div>
+              <div class="manual-hero__panel" aria-label="Manual metadata">
+                <span>Reader mode</span>
+                <strong>{chapters.length} Markdown chapters</strong>
+                <p>{sectionCount || 1} sections rendered from individual source files.</p>
+                <div class="article-meta">
+                  <span>{doc.data.category}</span>
+                  {doc.data.tags.map((tag) => <span>{tag}</span>)}
+                </div>
+                <a
+                  class="inline-edit-button inline-edit-button--header"
+                  href={editorRoute(docsUrl(doc))}
+                  hidden
+                  data-inline-edit-route={docsUrl(doc)}
+                  data-inline-edit-label={`Edit ${doc.data.title}`}
+                >
+                  Edit overview
+                </a>
+              </div>
+            </>
+          ) : (
+            <>
+              <div class="article-kicker">
+                <p class="eyebrow">{doc.data.category}</p>
+                <span>{sourceLabel}</span>
+              </div>
+              <h1>{doc.data.title}</h1>
+              {doc.data.description && <p class="page-heading__lede">{doc.data.description}</p>}
+              {
+                maintainers.length > 0 && (
+                  <p class="maintainer-line">
+                    Maintained by {maintainers.map((maintainer, index) => (
+                      <>
+                        <span>{maintainer}</span>
+                        {index < maintainers.length - 1 ? ", " : ""}
+                      </>
+                    ))}
+                  </p>
+                )
+              }
+              <div class="article-meta" aria-label="Document metadata">
+                <span>{chapters.length || 1} chapter{chapters.length === 1 ? "" : "s"}</span>
+                <span>{sectionCount || 1} section{sectionCount === 1 ? "" : "s"}</span>
+                <span>{doc.data.category}</span>
+                {doc.data.tags.map((tag) => <span>{tag}</span>)}
+              </div>
+              {
+                chapterPreview.length > 0 && (
+                  <nav class="chapter-preview" aria-label="Top chapters">
+                    {chapterPreview.map((chapter) => (
+                      <a href={`#${chapter.slug}`}>{chapter.text}</a>
+                    ))}
+                  </nav>
+                )
+              }
+              <a
+                class="inline-edit-button inline-edit-button--header"
+                href={editorRoute(docsUrl(doc))}
+                hidden
+                data-inline-edit-route={docsUrl(doc)}
+                data-inline-edit-label={`Edit ${doc.data.title}`}
+              >
+                Edit source
+              </a>
+            </>
+          )
+        }
+      </header>
+      {
+        hasManualChapters ? (
+          <details class="manual-overview-card page-enter page-enter--delay-1">
+            <summary>
+              <span>
+                <strong>Overview and resource vault</strong>
+                <small>Intro text, repositories, and attachment downloads from the overview Markdown file.</small>
+              </span>
+            </summary>
+            <div class="manual-overview markdown-content">
+              <slot />
+            </div>
+          </details>
+        ) : (
+          <div class="markdown-content page-enter page-enter--delay-1">
+            <slot />
+          </div>
+        )
+      }
+      {
+        renderedManualChapters.length > 0 && (
+          <section class="manual-chapter-stack page-enter page-enter--delay-2" data-manual-chapters aria-label="AI Formula chapters">
+            <div class="manual-chapter-toolbar">
+              <div>
+                <p class="eyebrow">Chapter files</p>
+                <h2>Read by chapter</h2>
+              </div>
+              <div class="manual-chapter-toolbar__actions" data-manual-controls>
+                <button type="button" data-manual-expand-all>Expand all</button>
+                <button type="button" data-manual-collapse-all>Fold all</button>
+              </div>
+            </div>
+            {renderedManualChapters.map((chapter) => {
+              const ChapterContent = chapter.Content;
+              return (
+                <section
+                  class="manual-chapter"
+                  id={chapter.anchor}
+                  data-manual-chapter
+                  data-manual-chapter-anchor={chapter.anchor}
+                >
+                  <details class="manual-chapter__details" data-manual-chapter-details>
+                    <summary class="manual-chapter__summary">
+                      <span class="manual-chapter__summary-copy">
+                        <span class="manual-chapter__eyebrow">Chapter {chapter.order}</span>
+                        <span class="manual-chapter__title">{chapter.title}</span>
+                        {
+                          chapter.description && (
+                            <span class="manual-chapter__description">{chapter.description}</span>
+                          )
+                        }
+                        {
+                          chapter.maintainers.length > 0 && (
+                            <span class="maintainer-line manual-chapter__maintainers">
+                              Maintained by {chapter.maintainers.map((maintainer, index) => (
+                                <>
+                                  <span>{maintainer}</span>
+                                  {index < chapter.maintainers.length - 1 ? ", " : ""}
+                                </>
+                              ))}
+                            </span>
+                          )
+                        }
+                      </span>
+                      <span class="manual-chapter__summary-meta">
+                        <span>{chapter.sectionCount || 1} section{chapter.sectionCount === 1 ? "" : "s"}</span>
+                        <span class="manual-chapter__chevron" aria-hidden="true"></span>
+                      </span>
+                    </summary>
+                    <div class="manual-chapter__body markdown-content">
+                      <ChapterContent />
+                    </div>
+                  </details>
+                  <a
+                    class="inline-edit-button manual-chapter__edit"
+                    href={editorRoute(chapter.editRoute)}
+                    hidden
+                    data-inline-edit-route={chapter.editRoute}
+                    data-inline-edit-label={`Edit ${chapter.title}`}
+                  >
+                    Edit
+                  </a>
+                </section>
+              );
+            })}
+          </section>
+        )
+      }
+      {
+        (previousDoc || nextDoc) && (
+          <nav class="article-navigation page-enter page-enter--delay-2" aria-label="Documentation navigation">
+            {previousDoc ? (
+              <a class="article-navigation__link" href={docsUrl(previousDoc)} rel="prev">
+                <span>Previous</span>
+                <strong>{previousDoc.data.title}</strong>
+              </a>
+            ) : (
+              <span></span>
+            )}
+            {nextDoc ? (
+              <a class="article-navigation__link article-navigation__link--next" href={docsUrl(nextDoc)} rel="next">
+                <span>Next</span>
+                <strong>{nextDoc.data.title}</strong>
+              </a>
+            ) : (
+              <span></span>
+            )}
+          </nav>
+        )
+      }
+    </article>
+  </div>
+</BaseLayout>

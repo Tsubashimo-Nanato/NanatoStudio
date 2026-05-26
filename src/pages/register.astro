@@ -1,0 +1,24 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import RegisterForm from "../components/RegisterForm.astro";
+---
+
+<BaseLayout title="Register" description="Create a Nanato Studio account through backend validation." pageClass="entry-page register-page">
+  <section class="utility-hero auth-shell page-enter" aria-labelledby="register-title">
+    <div class="utility-copy">
+      <p class="eyebrow">Account registration</p>
+      <h1 id="register-title">Create a workspace account.</h1>
+      <p>
+        Username, email confirmation, password confirmation, and the human verification challenge are all checked by the
+        backend before an account is created.
+      </p>
+      <div class="status-row" aria-label="Registration validation">
+        <span>Unique username</span>
+        <span>Unique email</span>
+        <span>Backend challenge</span>
+      </div>
+    </div>
+
+    <RegisterForm />
+  </section>
+</BaseLayout>

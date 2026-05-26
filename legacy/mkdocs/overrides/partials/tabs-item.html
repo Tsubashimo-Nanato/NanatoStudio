@@ -1,0 +1,61 @@
+{#-
+  Customized tabs item: keep normal Material tab behavior while adding
+  an optional hover dropdown inside `.md-tabs__list`.
+-#}
+{% macro render_content(nav_item, ref) %}
+  {% set ref = ref or nav_item %}
+  {% if nav_item == ref or "navigation.indexes" in features %}
+    {% if nav_item.is_index and nav_item.meta.icon %}
+      {% include ".icons/" ~ nav_item.meta.icon ~ ".svg" %}
+    {% endif %}
+  {% endif %}
+  {{ ref.title }}
+{% endmacro %}
+
+{% macro render_dropdown(ref) %}
+  {% if config.extra and config.extra.top_tabs_dropdowns and ref.title in config.extra.top_tabs_dropdowns %}
+    <div class="md-tabs__dropdown" aria-label="{{ ref.title }} dropdown">
+      <div class="md-tabs__dropdown-inner">
+        {% for item in config.extra.top_tabs_dropdowns[ref.title] %}
+          <a
+            href="{{ item.url | url }}"
+            class="md-tabs__dropdown-link{% if page.url == item.url %} md-tabs__dropdown-link--active{% endif %}"
+          >
+            {{ item.title }}
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro render(nav_item, ref) %}
+  {% set ref = ref or nav_item %}
+  {% set class = "md-tabs__item" %}
+  {% if ref.active %}
+    {% set class = class ~ " md-tabs__item--active" %}
+  {% endif %}
+  {% if config.extra and config.extra.top_tabs_dropdowns and ref.title in config.extra.top_tabs_dropdowns %}
+    {% set class = class ~ " md-tabs__item--dropdown" %}
+  {% endif %}
+  {% if nav_item.children %}
+    {% set first = nav_item.children | first %}
+    {% if first.children %}
+      {{ render(first, ref) }}
+    {% else %}
+      <li class="{{ class }}">
+        <a href="{{ first.url | url }}" class="md-tabs__link">
+          {{ render_content(first, ref) }}
+        </a>
+        {{ render_dropdown(ref) }}
+      </li>
+    {% endif %}
+  {% else %}
+    <li class="{{ class }}">
+      <a href="{{ nav_item.url | url }}" class="md-tabs__link">
+        {{ render_content(nav_item) }}
+      </a>
+      {{ render_dropdown(ref) }}
+    </li>
+  {% endif %}
+{% endmacro %}

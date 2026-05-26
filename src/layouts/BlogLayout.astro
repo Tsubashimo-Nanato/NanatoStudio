@@ -1,0 +1,96 @@
+---
+import { getCollection, type CollectionEntry } from "astro:content";
+import BaseLayout from "./BaseLayout.astro";
+import { blogUrl, formatContentDate, readingTimeLabel } from "../utils/content";
+
+interface Props {
+  post: CollectionEntry<"blog">;
+}
+
+const { post } = Astro.props;
+const posts = [...(await getCollection("blog"))].sort(
+  (left, right) => right.data.date.valueOf() - left.data.date.valueOf()
+);
+const currentIndex = posts.findIndex((entry) => entry.id === post.id);
+const previousPost = currentIndex > 0 ? posts[currentIndex - 1] : undefined;
+const nextPost = currentIndex >= 0 && currentIndex < posts.length - 1 ? posts[currentIndex + 1] : undefined;
+const formattedDate = formatContentDate(post.data.date);
+const postBody = "body" in post && typeof post.body === "string" ? post.body : "";
+const readingTime = readingTimeLabel(postBody);
+const maintainers = [...new Set([...(post.data.maintainers ?? []), ...(post.data.maintainerUsernames ?? [])])];
+---
+
+<BaseLayout title={post.data.title} description={post.data.description} pageClass="blog-page blog-detail-page">
+  <article class="blog-note">
+    <a class="blog-back-link page-enter" href="/blog/">Back to journal</a>
+    <header class="blog-note__header page-enter">
+      <div class="blog-note__meta" aria-label="Post metadata">
+        <span>{post.data.category}</span>
+        <span>{formattedDate}</span>
+        <span>{readingTime}</span>
+      </div>
+      <h1>{post.data.title}</h1>
+      {post.data.description && <p>{post.data.description}</p>}
+      {
+        maintainers.length > 0 && (
+          <p class="maintainer-line">
+            Maintained by {maintainers.map((maintainer, index) => (
+              <>
+                <span>{maintainer}</span>
+                {index < maintainers.length - 1 ? ", " : ""}
+              </>
+            ))}
+          </p>
+        )
+      }
+      <div class="blog-tag-row" aria-label="Post tags">
+        {(post.data.tags.length > 0 ? post.data.tags : ["Studio note"]).map((tag) => <span>{tag}</span>)}
+      </div>
+    </header>
+
+    <div class="blog-note__body-shell page-enter page-enter--delay-1">
+      <aside class="blog-note__aside" aria-label="Article context">
+        <p class="eyebrow">Filed under</p>
+        <strong>{post.data.category}</strong>
+        <span>{readingTime} / Markdown source</span>
+        {maintainers.length > 0 && <span>Maintained by {maintainers.join(", ")}</span>}
+      </aside>
+      <div class="markdown-content markdown-content--blog blog-note__content">
+        <slot />
+      </div>
+    </div>
+
+    {
+      (previousPost || nextPost) && (
+        <nav class="blog-post-navigation page-enter page-enter--delay-2" aria-label="Blog post navigation">
+          {previousPost ? (
+            <a class="blog-post-navigation__link" href={blogUrl(previousPost)} rel="prev">
+              <span>Previous</span>
+              <strong>{previousPost.data.title}</strong>
+            </a>
+          ) : (
+            <span></span>
+          )}
+          {nextPost ? (
+            <a class="blog-post-navigation__link blog-post-navigation__link--next" href={blogUrl(nextPost)} rel="next">
+              <span>Next</span>
+              <strong>{nextPost.data.title}</strong>
+            </a>
+          ) : (
+            <span></span>
+          )}
+        </nav>
+      )
+    }
+    {
+      !(previousPost || nextPost) && (
+        <nav class="blog-post-navigation blog-post-navigation--single page-enter page-enter--delay-2" aria-label="Blog post navigation">
+          <a class="blog-post-navigation__link blog-post-navigation__link--center" href="/blog/">
+            <span>Journal</span>
+            <strong>Back to all notes</strong>
+          </a>
+        </nav>
+      )
+    }
+  </article>
+</BaseLayout>
