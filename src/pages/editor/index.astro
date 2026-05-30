@@ -62,6 +62,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
             <input class="sr-only" type="file" accept=".md,.mdx,text/markdown,text/plain" data-editor-import />
             <button class="button" type="button" data-editor-import-trigger>Load Markdown file</button>
             <button class="button" type="button" data-editor-copy>Copy source</button>
+            <button class="button button--subtle" type="button" data-editor-build>Run npm build</button>
           </div>
         </div>
         <div class="editor-form__grid">
@@ -102,5 +103,4 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     </section>
   </section>
 
-  <script src="../../scripts/auth-ui.ts"></script>
 </BaseLayout>

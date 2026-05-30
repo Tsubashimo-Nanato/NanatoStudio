@@ -9,6 +9,7 @@ type ProjectLink = {
   href: string;
   label: string;
   description: string;
+  matchPaths?: string[];
 };
 
 const links: NavItem[] = [
@@ -21,12 +22,11 @@ const links: NavItem[] = [
 ];
 
 const projectLinks: ProjectLink[] = [
-  { href: "/projects/", label: "Project index", description: "Showcase and public tracks" },
   { href: "/docs/aiformula/", label: "AI Formula", description: "Robotics onboarding manual" },
-  { href: "/projects/cooking/", label: "Cooking", description: "Food systems and experiments" },
-  { href: "/projects/gaming/", label: "Gaming", description: "Games, tooling, and logs" },
-  { href: "/projects/embedded/", label: "Embedded", description: "Hardware and runtime notes" },
-  { href: "/projects/softwares/", label: "Softwares", description: "Software utilities and builds" }
+  { href: "/projects/cooking/", label: "Cooking", description: "Food systems and experiments", matchPaths: ["/docs/cooking/"] },
+  { href: "/projects/gaming/", label: "Gaming", description: "Games, tooling, and logs", matchPaths: ["/docs/gaming/"] },
+  { href: "/projects/embedded/", label: "Embedded", description: "Hardware and runtime notes", matchPaths: ["/docs/embedded/"] },
+  { href: "/projects/softwares/", label: "Softwares", description: "Software utilities and builds", matchPaths: ["/docs/softwares/"] }
 ];
 
 const currentPath = Astro.url.pathname;
@@ -40,15 +40,25 @@ function isExactPath(href: string): boolean {
   return normalizePath(currentPath) === normalizePath(href);
 }
 
+function isProjectPath(path: string): boolean {
+  const normalizedPath = normalizePath(path);
+  const docsProjectPaths = ["/docs/aiformula/", "/docs/cooking/", "/docs/gaming/", "/docs/embedded/", "/docs/softwares/"];
+  return normalizedPath.startsWith("/projects/") || docsProjectPaths.some((prefix) => normalizedPath.startsWith(prefix));
+}
+
 function isItemActive(item: NavItem): boolean {
   const normalizedCurrent = normalizePath(currentPath);
   if (item.section === "home") return normalizedCurrent === "/";
   if (item.section === "blogs") return normalizedCurrent.startsWith("/blog/");
-  if (item.section === "projects") {
-    return normalizedCurrent.startsWith("/projects/") || normalizedCurrent.startsWith("/docs/aiformula/");
-  }
+  if (item.section === "projects") return isProjectPath(normalizedCurrent);
   if (item.section === "music") return normalizedCurrent.startsWith("/music/");
   return normalizedCurrent.startsWith(normalizePath(item.href));
+}
+
+function isProjectLinkActive(project: ProjectLink): boolean {
+  const normalizedCurrent = normalizePath(currentPath);
+  const paths = [project.href, ...(project.matchPaths ?? [])].map(normalizePath);
+  return paths.some((path) => (path === "/projects/" ? normalizedCurrent === path : normalizedCurrent.startsWith(path)));
 }
 ---
 
@@ -73,18 +83,21 @@ function isItemActive(item: NavItem): boolean {
                 {
                   link.section === "projects" ? (
                     <div class="project-menu" data-project-menu-root>
-                      <button
+                      <a
                         class:list={["site-nav__link", "site-nav__link--button", { "site-nav__link--active": isActive }]}
-                        type="button"
+                        href={link.href}
+                        data-nav-section={link.section}
+                        data-nav-label={link.label}
                         aria-haspopup="true"
                         aria-expanded="false"
                         aria-controls="project-menu-panel"
                         aria-current={isCurrent ? "page" : isActive ? "location" : undefined}
                         data-project-menu-toggle
+                        data-page-transition-link
                       >
                         {link.label}
                         <span class="project-menu__chevron" aria-hidden="true"></span>
-                      </button>
+                      </a>
                       <div
                         class="project-menu__panel"
                         id="project-menu-panel"
@@ -101,7 +114,7 @@ function isItemActive(item: NavItem): boolean {
                             <a
                               class:list={[
                                 "project-menu__link",
-                                { "project-menu__link--active": normalizePath(currentPath).startsWith(normalizePath(project.href)) }
+                                { "project-menu__link--active": isProjectLinkActive(project) }
                               ]}
                               href={project.href}
                               data-page-transition-link
@@ -118,6 +131,8 @@ function isItemActive(item: NavItem): boolean {
                     <a
                       class:list={["site-nav__link", { "site-nav__link--active": isActive }]}
                       href={link.href}
+                      data-nav-section={link.section}
+                      data-nav-label={link.label}
                       data-page-transition-link
                       aria-current={isCurrent ? "page" : isActive ? "location" : undefined}
                     >

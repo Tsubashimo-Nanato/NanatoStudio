@@ -9,7 +9,7 @@
 
   <form class="auth-form auth-form--stacked" data-auth-form data-auth-mode="register" novalidate>
     <div class="form-status form-status--neutral" data-auth-message aria-live="polite">
-      Registration is validated by the backend before the account is created.
+      Fill the fields and solve the challenge.
     </div>
 
     <label>
@@ -60,24 +60,8 @@
     <button class="button button--primary auth-submit" type="submit" data-auth-submit>Create account</button>
   </form>
 
-  <details class="api-debug-panel" data-api-diagnostics>
-    <summary>Local API diagnostics</summary>
-    <div class="api-debug-panel__body">
-      <p>API base: <code data-api-base>Resolving...</code></p>
-      <p>Mode: <code data-api-mode>Resolving...</code></p>
-      <button class="button button--subtle" type="button" data-api-debug-check>Check backend</button>
-      <p class="api-debug-panel__result api-debug-panel__result--neutral" data-api-debug-result aria-live="polite">
-        Use this when the challenge says unavailable.
-      </p>
-    </div>
-  </details>
-
   <div class="auth-card__footer" aria-label="Registration links">
-    <p class="auth-card__note">
-      Already have an account? <a href="/login/">Sign in</a>.
-    </p>
+    <a class="button button--subtle auth-card__secondary-action" href="/login/">Sign in</a>
     <a class="text-link" href="/">Back to public site</a>
   </div>
 </div>
-
-<script src="../scripts/auth-ui.ts"></script>

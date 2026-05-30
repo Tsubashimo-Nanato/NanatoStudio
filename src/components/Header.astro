@@ -15,7 +15,6 @@ import SearchBox from "./SearchBox.astro";
         <button
           class="account-menu__trigger account-nav__link account-nav__link--strong"
           type="button"
-          aria-haspopup="true"
           aria-expanded="false"
           aria-controls="account-menu-panel"
           data-account-menu-toggle
@@ -24,8 +23,6 @@ import SearchBox from "./SearchBox.astro";
           Sign in
         </button>
         <div class="account-menu__panel" id="account-menu-panel" role="menu" aria-hidden="true" data-account-menu-panel>
-          <a class="account-menu__item" href="/login/" role="menuitem" data-account-guest>Sign in</a>
-          <a class="account-menu__item" href="/register/" role="menuitem" data-account-guest>Sign up</a>
           <a class="account-menu__item" href="/dashboard/" role="menuitem" data-account-signed-in hidden>Workspace</a>
           <button class="account-menu__item" type="button" role="menuitem" data-account-signed-in data-account-signout hidden>
             Sign out

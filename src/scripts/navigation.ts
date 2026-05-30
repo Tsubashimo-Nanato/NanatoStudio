@@ -12,15 +12,6 @@ const pageExchangeDuration = 1120;
 
 type PaletteName = (typeof paletteValues)[number];
 type ThemeMode = "light" | "dark";
-type PageExitSnapshot = {
-  html: string;
-  className: string;
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-  motion: ReturnType<typeof organicMotion>;
-};
 
 declare global {
   interface Window {
@@ -301,13 +292,96 @@ function requestHeaderOffset(): void {
 
 function setupHeaderState(): void {
   const header = document.querySelector<HTMLElement>("[data-site-header]");
+  const inner = header?.querySelector<HTMLElement>(".site-header__inner");
   if (!header) return;
-  if (header.dataset.headerReady === "true") return;
+  if (header.dataset.headerReady === "true") {
+    header.dispatchEvent(new CustomEvent("nanato:header-state-update"));
+    return;
+  }
   header.dataset.headerReady = "true";
 
   let ticking = false;
+  let docked = header.hasAttribute("data-nav-docked");
+  const dockEntryOffset = (): number => Math.max(150, Math.min(260, window.innerHeight * 0.22));
+  const dockExitOffset = (): number => Math.max(60, Math.min(110, window.innerHeight * 0.1));
+
+  const updateDockMetrics = (): void => {
+    if (!inner || mobileQuery.matches) return;
+
+    const widget = document.querySelector<HTMLElement>("[data-portable-player]");
+    const dockHeight = inner.offsetHeight;
+    const widgetRect = widget?.getBoundingClientRect();
+    const widgetTop = widgetRect && widgetRect.height > 0 ? widgetRect.top : window.innerHeight - 112;
+    const preferredTop = Math.max(74, Math.min(118, window.innerHeight * 0.15));
+    const railBottomLimit = Math.max(180, widgetTop - 76);
+    const top = Math.max(56, Math.min(preferredTop, railBottomLimit - dockHeight));
+    const railBottom = top + dockHeight;
+    const searchTop = Math.min(
+      railBottom + 12,
+      Math.max(74, widgetTop - 58)
+    );
+
+    header.style.setProperty("--nav-dock-top", `${top.toFixed(1)}px`);
+    header.style.setProperty("--nav-dock-search-top", `${Math.max(74, searchTop).toFixed(1)}px`);
+  };
+
+  const clearDockMetrics = (): void => {
+    header.style.removeProperty("--nav-dock-top");
+    header.style.removeProperty("--nav-dock-search-top");
+  };
+
+  const animateDockChange = (before: DOMRect, after: DOMRect): void => {
+    if (!inner || motionQuery.matches) return;
+    const deltaX = before.left - after.left;
+    const deltaY = before.top - after.top;
+    const scaleX = before.width > 0 && after.width > 0 ? before.width / after.width : 1;
+    const scaleY = before.height > 0 && after.height > 0 ? before.height / after.height : 1;
+
+    inner.animate(
+      [
+        {
+          opacity: 0.86,
+          transform: `translate3d(${deltaX.toFixed(2)}px, ${deltaY.toFixed(2)}px, 0) scale(${scaleX.toFixed(4)}, ${scaleY.toFixed(4)})`
+        },
+        {
+          opacity: 1,
+          transform: "translate3d(0, 0, 0) scale(1)"
+        }
+      ],
+      {
+        duration: 560,
+        easing: "cubic-bezier(0.18, 0.74, 0.14, 1)",
+        fill: "both"
+      }
+    );
+  };
+
+  const setDocked = (nextDocked: boolean): void => {
+    if (!inner) return;
+    if (nextDocked === docked) {
+      if (nextDocked) updateDockMetrics();
+      return;
+    }
+
+    const before = inner.getBoundingClientRect();
+    docked = nextDocked;
+    header.toggleAttribute("data-nav-docked", nextDocked);
+    document.documentElement.toggleAttribute("data-nav-docked", nextDocked);
+    if (nextDocked) {
+      updateDockMetrics();
+    } else {
+      clearDockMetrics();
+    }
+    const after = inner.getBoundingClientRect();
+    animateDockChange(before, after);
+    requestHeaderOffset();
+  };
+
   const update = (): void => {
-    header.toggleAttribute("data-scrolled", window.scrollY > 8);
+    const scrollY = window.scrollY;
+    header.toggleAttribute("data-scrolled", scrollY > 8);
+    const shouldDock = !mobileQuery.matches && (docked ? scrollY > dockExitOffset() : scrollY > dockEntryOffset());
+    setDocked(shouldDock);
   };
 
   const requestUpdate = (): void => {
@@ -320,7 +394,10 @@ function setupHeaderState(): void {
   };
 
   update();
+  header.addEventListener("nanato:header-state-update", requestUpdate);
   window.addEventListener("scroll", requestUpdate, { passive: true });
+  window.addEventListener("resize", requestUpdate);
+  mobileQuery.addEventListener("change", requestUpdate);
 }
 
 function setupNavigation(): void {
@@ -374,9 +451,127 @@ function setupNavigation(): void {
   setOpen(false);
 }
 
+function isProjectRoute(path: string): boolean {
+  const projectDocPrefixes = ["/docs/aiformula/", "/docs/cooking/", "/docs/gaming/", "/docs/embedded/", "/docs/softwares/"];
+  return path.startsWith("/projects/") || projectDocPrefixes.some((prefix) => path.startsWith(prefix));
+}
+
+function navSectionForPath(pathname: string): "home" | "blogs" | "projects" | "apps" | "music" | "about" | null {
+  const path = normalizeRoutePath(pathname);
+  if (path === "/") return "home";
+  if (path.startsWith("/blog/")) return "blogs";
+  if (isProjectRoute(path)) return "projects";
+  if (path.startsWith("/apps/")) return "apps";
+  if (path.startsWith("/music/")) return "music";
+  if (path.startsWith("/about/")) return "about";
+  return null;
+}
+
+function setupActiveNavigation(): void {
+  const currentPath = normalizeRoutePath(window.location.pathname);
+  const currentSection = navSectionForPath(window.location.pathname);
+
+  document.querySelectorAll<HTMLElement>(".site-nav__item").forEach((item) => {
+    item.classList.remove("site-nav__item--active");
+  });
+
+  document.querySelectorAll<HTMLElement>(".site-nav__link").forEach((link) => {
+    link.classList.remove("site-nav__link--active");
+    link.removeAttribute("aria-current");
+  });
+
+  document.querySelectorAll<HTMLAnchorElement>(".site-nav__link[href]").forEach((link) => {
+    const hrefPath = normalizeRoutePath(new URL(link.href, window.location.href).pathname);
+    const section = navSectionForPath(hrefPath);
+    const active = section === currentSection;
+    const exact = hrefPath === currentPath;
+    link.classList.toggle("site-nav__link--active", active);
+    if (active) {
+      link.closest(".site-nav__item")?.classList.add("site-nav__item--active");
+      link.setAttribute("aria-current", exact ? "page" : "location");
+    }
+  });
+
+  const projectToggle = document.querySelector<HTMLElement>("[data-project-menu-toggle]");
+  if (projectToggle) {
+    const active = currentSection === "projects";
+    projectToggle.classList.toggle("site-nav__link--active", active);
+    projectToggle.closest(".site-nav__item")?.classList.toggle("site-nav__item--active", active);
+    if (active) projectToggle.setAttribute("aria-current", currentPath === "/projects/" ? "page" : "location");
+  }
+
+  document.querySelectorAll<HTMLAnchorElement>(".project-menu__link").forEach((link) => {
+    const hrefPath = normalizeRoutePath(new URL(link.href, window.location.href).pathname);
+    const projectAliases: Record<string, string[]> = {
+      "/projects/cooking/": ["/docs/cooking/"],
+      "/projects/gaming/": ["/docs/gaming/"],
+      "/projects/embedded/": ["/docs/embedded/"],
+      "/projects/softwares/": ["/docs/softwares/"]
+    };
+    const paths = [hrefPath, ...(projectAliases[hrefPath] ?? [])];
+    const active = paths.some((path) => (path === "/projects/" ? currentPath === path : currentPath.startsWith(path)));
+    link.classList.toggle("project-menu__link--active", active);
+  });
+}
+
+function playHomeThemeHint(): void {
+  const homeRoute = normalizeRoutePath(window.location.pathname) === "/";
+  const root = document.documentElement;
+  if (!homeRoute || motionQuery.matches || root.dataset.homeThemeHintPlaying === "true") return;
+
+  const header = document.querySelector<HTMLElement>(".site-header__inner");
+  const themeToggle = document.querySelector<HTMLElement>("[data-theme-toggle]");
+  if (!header || !themeToggle) return;
+
+  const headerRect = header.getBoundingClientRect();
+  const toggleRect = themeToggle.getBoundingClientRect();
+  if (headerRect.width <= 0 || headerRect.height <= 0 || toggleRect.width <= 0 || toggleRect.height <= 0) return;
+
+  root.dataset.homeThemeHintPlaying = "true";
+  document.querySelector(".home-theme-hint")?.remove();
+
+  const inset = 5;
+  const headerX = Math.max(inset, headerRect.left - inset);
+  const headerY = Math.max(inset, headerRect.top - inset);
+  const headerWidth = Math.min(window.innerWidth - headerX - inset, headerRect.width + inset * 2);
+  const headerHeight = headerRect.height + inset * 2;
+  const toggleInset = 7;
+  const toggleX = Math.max(toggleInset, toggleRect.left - toggleInset);
+  const toggleY = Math.max(toggleInset, toggleRect.top - toggleInset);
+  const toggleSize = Math.max(toggleRect.width, toggleRect.height) + toggleInset * 2;
+  const toggleCenterX = toggleX + toggleSize / 2;
+  const toggleCenterY = toggleY + toggleSize / 2;
+  const toggleRadius = toggleSize / 2;
+  const routeStartX = Math.max(headerX + headerWidth * 0.5, toggleCenterX - Math.min(190, headerWidth * 0.24));
+  const routeStartY = headerY + headerHeight / 2;
+  const routeControlX = routeStartX + (toggleCenterX - routeStartX) * 0.56;
+  const routeControlY = Math.min(routeStartY, toggleCenterY) - Math.max(12, headerHeight * 0.22);
+  const routePath = [
+    `M ${routeStartX.toFixed(2)} ${routeStartY.toFixed(2)}`,
+    `Q ${routeControlX.toFixed(2)} ${routeControlY.toFixed(2)} ${toggleCenterX.toFixed(2)} ${toggleCenterY.toFixed(2)}`
+  ].join(" ");
+
+  const layer = document.createElement("div");
+  layer.className = "home-theme-hint";
+  layer.setAttribute("aria-hidden", "true");
+  layer.innerHTML = `
+    <svg class="home-theme-hint__svg" viewBox="0 0 ${window.innerWidth} ${window.innerHeight}" preserveAspectRatio="none">
+      <rect class="home-theme-hint__path home-theme-hint__path--nav" x="${headerX.toFixed(2)}" y="${headerY.toFixed(2)}" width="${headerWidth.toFixed(2)}" height="${headerHeight.toFixed(2)}" rx="${Math.min(28, headerHeight / 2).toFixed(2)}" pathLength="1" />
+      <path class="home-theme-hint__path home-theme-hint__path--route" d="${routePath}" pathLength="1" />
+      <circle class="home-theme-hint__path home-theme-hint__path--toggle" cx="${toggleCenterX.toFixed(2)}" cy="${toggleCenterY.toFixed(2)}" r="${toggleRadius.toFixed(2)}" pathLength="1" />
+    </svg>
+  `;
+  document.body.append(layer);
+
+  window.setTimeout(() => {
+    layer.remove();
+    delete root.dataset.homeThemeHintPlaying;
+  }, 2300);
+}
+
 function setupProjectMenu(): void {
   const root = document.querySelector<HTMLElement>("[data-project-menu-root]");
-  const toggle = root?.querySelector<HTMLButtonElement>("[data-project-menu-toggle]");
+  const toggle = root?.querySelector<HTMLElement>("[data-project-menu-toggle]");
   const panel = root?.querySelector<HTMLElement>("[data-project-menu-panel]");
   if (!root || !toggle || !panel) return;
   if (root.dataset.projectMenuReady === "true") return;
@@ -417,18 +612,12 @@ function setupProjectMenu(): void {
   panel.addEventListener("mouseleave", scheduleClose);
   root.addEventListener("focusin", (event) => {
     const target = asElement(event.target);
-    if (target?.closest("[data-project-menu-toggle]")) return;
-    setOpen(true);
+    if (target?.closest("[data-project-menu-root]")) setOpen(true);
   });
   root.addEventListener("focusout", () => {
     window.setTimeout(() => {
       if (!root.contains(document.activeElement)) scheduleClose();
     }, 0);
-  });
-  toggle.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setOpen(mobileQuery.matches ? !root.hasAttribute("data-project-menu-open") : true);
   });
   panel.addEventListener("click", (event) => {
     const link = asElement(event.target)?.closest<HTMLAnchorElement>("[data-project-menu-link]");
@@ -492,8 +681,16 @@ function setupAccountMenu(): void {
     closeTimer = 0;
   };
 
+  const isSignedIn = (): boolean => root.dataset.authState === "signed-in";
+
   const setOpen = (open: boolean): void => {
     clearCloseTimer();
+    if (open && !isSignedIn()) {
+      root.removeAttribute("data-account-menu-open");
+      toggle.setAttribute("aria-expanded", "false");
+      panel.setAttribute("aria-hidden", "true");
+      return;
+    }
     if (open) {
       closeHeaderPopovers("account");
       setHeaderMenuState("account");
@@ -513,11 +710,19 @@ function setupAccountMenu(): void {
   const setAuthenticated = (authenticated: boolean, user?: AccountUser): void => {
     root.dataset.authState = authenticated ? "signed-in" : "guest";
     if (label) label.textContent = authenticated ? "Workspace" : "Sign in";
+    if (authenticated) {
+      toggle.setAttribute("aria-haspopup", "true");
+      toggle.setAttribute("aria-controls", "account-menu-panel");
+    } else {
+      toggle.removeAttribute("aria-haspopup");
+      toggle.removeAttribute("aria-controls");
+      setOpen(false);
+    }
     toggle.setAttribute(
       "aria-label",
       authenticated
         ? `Account menu for ${user?.username ?? "signed-in user"}`
-        : "Sign in or create an account"
+        : "Sign in"
     );
     guestItems.forEach((item) => {
       item.hidden = authenticated;
@@ -551,6 +756,10 @@ function setupAccountMenu(): void {
   toggle.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
+    if (!isSignedIn()) {
+      window.location.assign("/login/");
+      return;
+    }
     setOpen(mobileQuery.matches ? !root.hasAttribute("data-account-menu-open") : true);
   });
   panel.addEventListener("click", (event) => {
@@ -1085,6 +1294,7 @@ type InlineContentDetail = EditableContentItem & {
 
 let inlineEditorDetail: InlineContentDetail | null = null;
 let inlineMarkdownRenderer: { render(source: string): string } | null = null;
+let floatRepulsionCleanup: (() => void) | null = null;
 
 function normalizeRoutePath(value: string): string {
   if (!value) return "";
@@ -1121,9 +1331,17 @@ function inlineEditorElements(): {
   preview: HTMLElement | null;
   status: HTMLElement | null;
   save: HTMLButtonElement | null;
+  build: HTMLButtonElement | null;
 } {
   let drawer = document.querySelector<HTMLElement>("[data-inline-editor]");
   if (!drawer) {
+    const backdrop = document.createElement("button");
+    backdrop.className = "inline-editor-backdrop";
+    backdrop.type = "button";
+    backdrop.hidden = true;
+    backdrop.dataset.inlineEditorBackdrop = "";
+    backdrop.setAttribute("aria-label", "Close editor");
+
     drawer = document.createElement("aside");
     drawer.className = "inline-editor-drawer";
     drawer.dataset.inlineEditor = "";
@@ -1131,13 +1349,16 @@ function inlineEditorElements(): {
     drawer.setAttribute("aria-label", "In-page Markdown editor");
     drawer.tabIndex = -1;
     drawer.innerHTML = `
-      <header class="inline-editor-drawer__header">
+      <span class="inline-editor-drawer__tape" data-inline-editor-drag-handle aria-hidden="true"></span>
+      <header class="inline-editor-drawer__header" data-inline-editor-drag-handle>
         <div>
           <p class="eyebrow">Live editor</p>
           <h2 data-inline-editor-title>Select source</h2>
           <p data-inline-editor-path>Backend-authorized Markdown source.</p>
         </div>
-        <button class="inline-editor-drawer__close" type="button" data-inline-editor-close aria-label="Close editor">Close</button>
+        <button class="inline-editor-drawer__close" type="button" data-inline-editor-close aria-label="Close editor">
+          <span aria-hidden="true"></span>
+        </button>
       </header>
       <div class="inline-editor-drawer__tools" aria-label="Markdown tools">
         <button type="button" data-inline-editor-insert="heading">Heading</button>
@@ -1148,26 +1369,32 @@ function inlineEditorElements(): {
         <button type="button" data-inline-editor-view="raw">Raw MD</button>
       </div>
       <div class="inline-editor-drawer__status" data-inline-editor-status aria-live="polite">Open an edit button to load source Markdown.</div>
-      <label class="inline-editor-drawer__source">
-        <span>Markdown source</span>
-        <textarea data-inline-editor-body rows="18" spellcheck="false"></textarea>
-      </label>
-      <section class="inline-editor-drawer__preview markdown-content" data-inline-editor-preview aria-label="Live Markdown preview"></section>
+      <div class="inline-editor-drawer__workbench">
+        <label class="inline-editor-drawer__source">
+          <span>Markdown source</span>
+          <textarea data-inline-editor-body rows="18" spellcheck="false"></textarea>
+        </label>
+        <section class="inline-editor-drawer__preview markdown-content" data-inline-editor-preview aria-label="Live Markdown preview"></section>
+      </div>
       <footer class="inline-editor-drawer__footer">
         <button class="button button--primary" type="button" data-inline-editor-save>Save source</button>
+        <button class="button button--subtle" type="button" data-inline-editor-build>Run npm build</button>
       </footer>
     `;
+    document.body.append(backdrop);
     document.body.append(drawer);
 
     const createdDrawer = drawer;
-    createdDrawer.querySelector<HTMLButtonElement>("[data-inline-editor-close]")?.addEventListener("click", () => {
+    const closeInlineEditor = (): void => {
       createdDrawer.hidden = true;
+      backdrop.hidden = true;
       document.documentElement.removeAttribute("data-inline-editor-open");
-    });
+    };
+    createdDrawer.querySelector<HTMLButtonElement>("[data-inline-editor-close]")?.addEventListener("click", closeInlineEditor);
+    backdrop.addEventListener("click", closeInlineEditor);
     createdDrawer.addEventListener("keydown", (event) => {
       if (event.key !== "Escape") return;
-      createdDrawer.hidden = true;
-      document.documentElement.removeAttribute("data-inline-editor-open");
+      closeInlineEditor();
     });
   }
 
@@ -1178,7 +1405,8 @@ function inlineEditorElements(): {
     textarea: drawer.querySelector("[data-inline-editor-body]"),
     preview: drawer.querySelector("[data-inline-editor-preview]"),
     status: drawer.querySelector("[data-inline-editor-status]"),
-    save: drawer.querySelector("[data-inline-editor-save]")
+    save: drawer.querySelector("[data-inline-editor-save]"),
+    build: drawer.querySelector("[data-inline-editor-build]")
   };
 }
 
@@ -1187,6 +1415,79 @@ function setInlineEditorStatus(message: string, tone: "neutral" | "success" | "e
   if (!status) return;
   status.textContent = message;
   status.dataset.inlineEditorTone = tone;
+}
+
+function setupInlineEditorDrag(drawer: HTMLElement): void {
+  if (drawer.dataset.inlineEditorDragReady === "true") return;
+  drawer.dataset.inlineEditorDragReady = "true";
+
+  const handles = Array.from(drawer.querySelectorAll<HTMLElement>("[data-inline-editor-drag-handle]"));
+  let pointerId = 0;
+  let startX = 0;
+  let startY = 0;
+  let originX = 0;
+  let originY = 0;
+  let currentX = 0;
+  let currentY = 0;
+
+  const applyPosition = (): void => {
+    drawer.style.setProperty("--inline-editor-x", `${currentX.toFixed(1)}px`);
+    drawer.style.setProperty("--inline-editor-y", `${currentY.toFixed(1)}px`);
+  };
+
+  const endDrag = (): void => {
+    drawer.removeAttribute("data-inline-editor-dragging");
+  };
+
+  handles.forEach((handle) => {
+    handle.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      if (asElement(event.target)?.closest("button, input, textarea, select, a")) return;
+      pointerId = event.pointerId;
+      startX = event.clientX;
+      startY = event.clientY;
+      currentX = Number.parseFloat(drawer.style.getPropertyValue("--inline-editor-x")) || 0;
+      currentY = Number.parseFloat(drawer.style.getPropertyValue("--inline-editor-y")) || 0;
+      originX = currentX;
+      originY = currentY;
+      handle.setPointerCapture(pointerId);
+      drawer.setAttribute("data-inline-editor-dragging", "");
+    });
+
+    handle.addEventListener("pointermove", (event) => {
+      if (!drawer.hasAttribute("data-inline-editor-dragging") || event.pointerId !== pointerId) return;
+      const rect = drawer.getBoundingClientRect();
+      const maxX = Math.max(40, (window.innerWidth - rect.width) / 2 - 18);
+      const maxY = Math.max(30, (window.innerHeight - rect.height) / 2 - 18);
+      currentX = Math.max(-maxX, Math.min(maxX, originX + event.clientX - startX));
+      currentY = Math.max(-maxY, Math.min(maxY, originY + event.clientY - startY));
+      applyPosition();
+    });
+
+    handle.addEventListener("pointerup", (event) => {
+      if (event.pointerId === pointerId) endDrag();
+    });
+    handle.addEventListener("pointercancel", (event) => {
+      if (event.pointerId === pointerId) endDrag();
+    });
+    handle.addEventListener("lostpointercapture", endDrag);
+  });
+}
+
+function withInlineEditorTimeout<T>(request: Promise<T>, message: string, ms = 180000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => reject(new Error(message)), ms);
+    request.then(
+      (value) => {
+        window.clearTimeout(timeout);
+        resolve(value);
+      },
+      (error: unknown) => {
+        window.clearTimeout(timeout);
+        reject(error);
+      }
+    );
+  });
 }
 
 function frontmatterText(detail: InlineContentDetail, key: string): string {
@@ -1231,8 +1532,12 @@ function insertMarkdownSnippet(kind: string): void {
 
 async function openInlineEditor(contentId: string): Promise<void> {
   const { drawer, title, path, textarea, save } = inlineEditorElements();
+  const backdrop = document.querySelector<HTMLElement>("[data-inline-editor-backdrop]");
   drawer.hidden = false;
+  if (backdrop) backdrop.hidden = false;
   drawer.scrollTop = 0;
+  drawer.style.setProperty("--inline-editor-x", "0px");
+  drawer.style.setProperty("--inline-editor-y", "0px");
   document.documentElement.dataset.inlineEditorOpen = "true";
   drawer.setAttribute("aria-busy", "true");
   if (save) save.disabled = true;
@@ -1274,7 +1579,8 @@ async function openInlineEditor(contentId: string): Promise<void> {
 }
 
 function setupInlineEditorShell(): void {
-  const { drawer, textarea, save } = inlineEditorElements();
+  const { drawer, textarea, save, build } = inlineEditorElements();
+  setupInlineEditorDrag(drawer);
   if (drawer.dataset.inlineEditorReady === "true") return;
   drawer.dataset.inlineEditorReady = "true";
 
@@ -1322,6 +1628,21 @@ function setupInlineEditorShell(): void {
       setInlineEditorStatus(error instanceof Error ? error.message : "Save failed.", "error");
     } finally {
       save.disabled = false;
+    }
+  });
+  build?.addEventListener("click", async () => {
+    build.disabled = true;
+    setInlineEditorStatus("Running npm run build from the backend workspace...", "neutral");
+    try {
+      const result = await withInlineEditorTimeout(
+        apiFetch<{ message: string; output?: string }>("/api/editor/build", { method: "POST" }),
+        "npm run build did not finish within 3 minutes. Check the backend terminal for progress."
+      );
+      setInlineEditorStatus(result.message, "success");
+    } catch (error) {
+      setInlineEditorStatus(error instanceof Error ? error.message : "npm run build failed.", "error");
+    } finally {
+      build.disabled = false;
     }
   });
 }
@@ -1373,9 +1694,8 @@ async function setupInlineEditButtons(): Promise<void> {
 function setupThemeToggle(): void {
   const toggle = document.querySelector<HTMLButtonElement>("[data-theme-toggle]");
   const visualControls = document.querySelector<HTMLElement>(".visual-controls--palette-menu");
-  const paletteSelect = document.querySelector<HTMLSelectElement>("[data-palette-select]");
   const paletteButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-palette-option]"));
-  if (!toggle && !paletteSelect && paletteButtons.length === 0) return;
+  if (!toggle && paletteButtons.length === 0) return;
   const controlsReady = visualControls?.dataset.visualControlsReady === "true";
 
   let transitionTimer = 0;
@@ -1390,7 +1710,6 @@ function setupThemeToggle(): void {
     applyDocumentVisualState(theme, palette);
     toggle?.setAttribute("aria-pressed", String(theme === "dark"));
     toggle?.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
-    if (paletteSelect) paletteSelect.value = palette;
     paletteButtons.forEach((button) => {
       const active = button.dataset.paletteOption === palette;
       button.classList.toggle("palette-option--active", active);
@@ -1463,12 +1782,6 @@ function setupThemeToggle(): void {
     const nextTheme = currentTheme() === "dark" ? "light" : "dark";
     persistVisualState(nextTheme, currentPalette());
     applyVisualStateWithFade(nextTheme);
-  });
-
-  paletteSelect?.addEventListener("change", () => {
-    const nextPalette = isPaletteName(paletteSelect.value) ? paletteSelect.value : "paper";
-    persistVisualState(currentTheme(), nextPalette);
-    applyVisualStateWithFade(currentTheme(), nextPalette);
   });
 
   paletteButtons.forEach((button) => {
@@ -1606,7 +1919,7 @@ function setupMusicPlayer(): void {
   const volumeSliders = Array.from(document.querySelectorAll<HTMLInputElement>("[data-volume-slider]"));
   const volumeKnobs = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-volume-knob]"));
   const discs = Array.from(
-    document.querySelectorAll<HTMLElement>(".music-page__disc, .music-mini__disc, .music-widget__disc")
+    document.querySelectorAll<HTMLElement>(".music-page__disc, .music-widget__disc")
   );
   const savedVolume = Number(window.localStorage.getItem("nanato-music-volume") ?? "0.42");
   let targetVolume = Number.isFinite(savedVolume) ? Math.min(1, Math.max(0, savedVolume)) : 0.42;
@@ -1630,9 +1943,9 @@ function setupMusicPlayer(): void {
 
   const setNeedleTransform = (ratio: number, playing: boolean, stopping = false): void => {
     const roomPlaybackAngle = 54 - ratio * 14;
-    const widgetPlaybackAngle = 50 - ratio * 12;
+    const widgetPlaybackAngle = 46 - ratio * 8;
     const roomAngle = playing || stopping ? roomPlaybackAngle : 24;
-    const widgetAngle = playing || stopping ? widgetPlaybackAngle : 22;
+    const widgetAngle = playing || stopping ? widgetPlaybackAngle : -8;
     surfaces.forEach((surface) => {
       surface.style.setProperty("--needle-angle", `${roomAngle}deg`);
       surface.style.setProperty("--needle-angle-widget", `${widgetAngle}deg`);
@@ -1764,7 +2077,18 @@ function setupMusicPlayer(): void {
     audio.muted = muted;
     if (!muted && targetVolume <= 0.01) {
       targetVolume = previousAudibleVolume;
-      audio.volume = audio.paused ? targetVolume : audio.volume;
+      try {
+        window.localStorage.setItem("nanato-music-volume", String(targetVolume));
+      } catch {
+        // Volume persistence is optional.
+      }
+    }
+    if (!muted) {
+      if (!audio.paused) {
+        fadeVolume(targetVolume, 180);
+      } else {
+        audio.volume = targetVolume;
+      }
     }
     syncVolumeControls();
   };
@@ -1829,6 +2153,8 @@ function setupMusicPlayer(): void {
     let pointerId = 0;
     let dragging = false;
     let didDrag = false;
+    let startX = 0;
+    let startY = 0;
 
     const volumeFromPointer = (clientX: number, clientY: number): number => {
       const rect = knob.getBoundingClientRect();
@@ -1845,13 +2171,17 @@ function setupMusicPlayer(): void {
       pointerId = event.pointerId;
       dragging = true;
       didDrag = false;
+      startX = event.clientX;
+      startY = event.clientY;
       knob.setPointerCapture(pointerId);
       knob.setAttribute("data-volume-knob-active", "");
     });
 
     knob.addEventListener("pointermove", (event) => {
       if (!dragging || event.pointerId !== pointerId) return;
+      if (!didDrag && Math.hypot(event.clientX - startX, event.clientY - startY) < 3) return;
       didDrag = true;
+      event.preventDefault();
       setVolume(volumeFromPointer(event.clientX, event.clientY));
     });
 
@@ -1865,6 +2195,7 @@ function setupMusicPlayer(): void {
         // Capture may already be released by the browser.
       }
       if (didDrag) {
+        setVolume(volumeFromPointer(event.clientX, event.clientY));
         event.preventDefault();
         window.setTimeout(() => {
           didDrag = false;
@@ -1881,6 +2212,22 @@ function setupMusicPlayer(): void {
         return;
       }
       setMuted(!(audio.muted || targetVolume <= 0.01));
+    });
+    knob.addEventListener("keydown", (event) => {
+      const step = event.shiftKey ? 0.1 : 0.05;
+      if (event.key === "ArrowUp" || event.key === "ArrowRight") {
+        event.preventDefault();
+        setVolume(targetVolume + step);
+      } else if (event.key === "ArrowDown" || event.key === "ArrowLeft") {
+        event.preventDefault();
+        setVolume(targetVolume - step);
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        setVolume(0);
+      } else if (event.key === "End") {
+        event.preventDefault();
+        setVolume(1);
+      }
     });
   });
 
@@ -1904,6 +2251,8 @@ function setupMusicWidget(): void {
   if (!widget) return;
   if (widget.dataset.musicWidgetReady === "true") return;
   widget.dataset.musicWidgetReady = "true";
+  const drawer = widget.querySelector<HTMLElement>(".music-widget__drawer");
+  const record = widget.querySelector<HTMLElement>("[data-player-toggle]");
 
   let closeTimer = 0;
 
@@ -1918,8 +2267,21 @@ function setupMusicWidget(): void {
     closeTimer = window.setTimeout(() => setOpen(false), motionQuery.matches ? 0 : 360);
   };
 
+  const scheduleCloseFromPointer = (event: PointerEvent): void => {
+    const relatedTarget = event.relatedTarget;
+    if (relatedTarget instanceof Node && widget.contains(relatedTarget)) return;
+    scheduleClose();
+  };
+
   widget.addEventListener("pointerenter", () => setOpen(true));
+  widget.addEventListener("pointerover", () => setOpen(true));
   widget.addEventListener("pointerleave", scheduleClose);
+  record?.addEventListener("pointerenter", () => setOpen(true));
+  record?.addEventListener("pointerover", () => setOpen(true));
+  record?.addEventListener("pointerleave", scheduleCloseFromPointer);
+  drawer?.addEventListener("pointerenter", () => setOpen(true));
+  drawer?.addEventListener("pointerover", () => setOpen(true));
+  drawer?.addEventListener("pointerleave", scheduleCloseFromPointer);
   widget.addEventListener("focusin", () => setOpen(true));
   widget.addEventListener("focusout", () => {
     window.setTimeout(() => {
@@ -1928,151 +2290,19 @@ function setupMusicWidget(): void {
   });
 }
 
+function setupMusicRouteState(): void {
+  const isMusicPage = normalizeRoutePath(window.location.pathname) === "/music/";
+  document.documentElement.toggleAttribute("data-music-route", isMusicPage);
+}
+
 function setupDeskStickers(): void {
-  const hosts = Array.from(
-    document.querySelectorAll<HTMLElement>(
-      ".studio-hero, .library-hero, .projects-hero, .apps-desk, .about-hero, .blog-journal-hero, .music-room__hero, .docs-article__header, .manual-hero"
-    )
-  );
-
-  hosts.forEach((host) => {
-    if (host.querySelector(":scope > [data-desk-sticker]")) return;
-    if (host.matches(".apps-desk") && host.querySelector(".apps-desk__tab")) return;
-    const sticker = document.createElement("span");
-    sticker.className = "desk-sticker";
-    sticker.dataset.deskSticker = "";
-    sticker.setAttribute("aria-hidden", "true");
-    sticker.style.position = "absolute";
-    host.prepend(sticker);
-  });
-
-  document.querySelectorAll<HTMLElement>(".apps-desk__tab").forEach((sticker) => {
-    sticker.dataset.deskSticker = "";
-  });
-
-  const stickers = Array.from(document.querySelectorAll<HTMLElement>("[data-desk-sticker]"));
-  stickers.forEach((sticker, index) => {
-    if (sticker.dataset.stickerReady === "true") return;
-    sticker.dataset.stickerReady = "true";
-    sticker.style.position = "absolute";
-    sticker.style.zIndex = "9";
-    sticker.style.setProperty("--sticker-delay", `${(index % 5) * -1.6}s`);
-    sticker.style.setProperty("--sticker-rotate", `${index % 2 === 0 ? -1.2 : 1.1}deg`);
-
-    let pointerId = 0;
-    let startX = 0;
-    let startY = 0;
-    let targetX = 0;
-    let targetY = 0;
-    let visualX = 0;
-    let visualY = 0;
-    let dragFrame = 0;
-    let releaseTimer = 0;
-
-    const findDragHost = (): HTMLElement => {
-      return (
-        sticker.closest<HTMLElement>(
-          ".studio-hero, .library-hero, .projects-hero, .apps-desk, .about-hero, .blog-journal-hero, .music-room__hero, .docs-article__header, .manual-hero"
-        ) ?? sticker.parentElement ?? sticker
-      );
-    };
-
-    const host = findDragHost();
-
-    const setHostTransform = (): void => {
-      const rotate = Math.max(-1.6, Math.min(1.6, visualX / 96));
-      host.style.transform = `translate3d(${visualX}px, ${visualY}px, 0) rotate(${rotate}deg)`;
-    };
-
-    const animateDrag = (): void => {
-      visualX += (targetX - visualX) * 0.18;
-      visualY += (targetY - visualY) * 0.18;
-      setHostTransform();
-      if (Math.abs(targetX - visualX) > 0.2 || Math.abs(targetY - visualY) > 0.2) {
-        dragFrame = window.requestAnimationFrame(animateDrag);
-        return;
-      }
-      dragFrame = 0;
-    };
-
-    const releaseSticker = (): void => {
-      if (releaseTimer) window.clearTimeout(releaseTimer);
-      releaseTimer = 0;
-      if (!sticker.hasAttribute("data-sticker-dragging")) return;
-      sticker.removeAttribute("data-sticker-dragging");
-      host.removeAttribute("data-sticker-host-dragging");
-      if (dragFrame) window.cancelAnimationFrame(dragFrame);
-      dragFrame = 0;
-      const startTransform = host.style.transform || "translate3d(0, 0, 0) rotate(0deg)";
-      const overshootX = visualX * -0.13;
-      const overshootY = visualY * -0.13;
-      host.animate(
-        [
-          { transform: startTransform },
-          { transform: `translate3d(${overshootX}px, ${overshootY}px, 0) rotate(${Math.max(-0.8, Math.min(0.8, overshootX / 120))}deg)` },
-          { transform: "translate3d(0, 0, 0) rotate(0deg)" }
-        ],
-        {
-          duration: motionQuery.matches ? 1 : 1120,
-          easing: "cubic-bezier(0.16, 0.84, 0.24, 1)"
-        }
-      );
-      host.style.transform = "";
-      targetX = 0;
-      targetY = 0;
-      visualX = 0;
-      visualY = 0;
-    };
-
-    sticker.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0) return;
-      pointerId = event.pointerId;
-      startX = event.clientX;
-      startY = event.clientY;
-      targetX = 0;
-      targetY = 0;
-      visualX = 0;
-      visualY = 0;
-      sticker.setPointerCapture(pointerId);
-      sticker.setAttribute("data-sticker-dragging", "");
-      host.setAttribute("data-sticker-host-dragging", "");
-      host.getAnimations().forEach((animation) => animation.cancel());
-      if (releaseTimer) window.clearTimeout(releaseTimer);
-      releaseTimer = window.setTimeout(releaseSticker, 5200);
-    });
-
-    sticker.addEventListener("pointermove", (event) => {
-      if (!sticker.hasAttribute("data-sticker-dragging") || event.pointerId !== pointerId) return;
-      if (releaseTimer) window.clearTimeout(releaseTimer);
-      releaseTimer = window.setTimeout(releaseSticker, 5200);
-      targetX = Math.max(-132, Math.min(132, event.clientX - startX));
-      targetY = Math.max(-88, Math.min(88, event.clientY - startY));
-      if (!dragFrame) dragFrame = window.requestAnimationFrame(animateDrag);
-    });
-
-    sticker.addEventListener("pointerup", (event) => {
-      if (event.pointerId !== pointerId) return;
-      releaseSticker();
-    });
-
-    sticker.addEventListener("pointercancel", (event) => {
-      if (event.pointerId !== pointerId) return;
-      releaseSticker();
-    });
-
-    sticker.addEventListener("lostpointercapture", () => {
-      if (!sticker.hasAttribute("data-sticker-dragging")) return;
-      releaseSticker();
-    });
-
-    document.addEventListener("mouseup", releaseSticker);
-    document.addEventListener("touchend", releaseSticker);
-    window.addEventListener("blur", releaseSticker);
+  document.querySelectorAll<HTMLElement>("[data-desk-sticker]").forEach((sticker) => {
+    sticker.remove();
   });
 }
 
 function setupDraggableApps(): void {
-  const apps = Array.from(document.querySelectorAll<HTMLElement>(".apps-desk__note, .app-tool"));
+  const apps = Array.from(document.querySelectorAll<HTMLElement>(".apps-bench__float-card, .apps-tool"));
   apps.forEach((app, index) => {
     if (app.dataset.appDragReady === "true") return;
     app.dataset.appDragReady = "true";
@@ -2115,20 +2345,22 @@ function setupDraggableApps(): void {
       app.removeAttribute("data-app-dragging");
       if (release && didDrag) {
         app.setAttribute("data-app-dragged", "true");
-        app.setAttribute("data-app-positioned", "true");
-        window.setTimeout(() => app.removeAttribute("data-app-dragged"), 260);
+        app.setAttribute("data-app-returning", "true");
+        targetX = 0;
+        targetY = 0;
+        window.setTimeout(() => {
+          app.removeAttribute("data-app-dragged");
+          app.removeAttribute("data-app-returning");
+        }, 460);
       }
-      if (frame) window.cancelAnimationFrame(frame);
-      frame = 0;
-      visualX = targetX;
-      visualY = targetY;
-      apply();
+      requestApply();
     };
 
     app.addEventListener("pointerdown", (event) => {
       if (event.button !== 0) return;
       const target = asElement(event.target);
-      if (target?.closest("button, input, textarea, select, code")) return;
+      const targetAnchor = target?.closest("a");
+      if (target?.closest("button, input, textarea, select, code") || (targetAnchor && targetAnchor !== app)) return;
       pointerId = event.pointerId;
       startX = event.clientX;
       startY = event.clientY;
@@ -2146,6 +2378,7 @@ function setupDraggableApps(): void {
       if (Math.abs(nextX - originX) > 3 || Math.abs(nextY - originY) > 3) didDrag = true;
       targetX = Math.max(-116, Math.min(116, nextX));
       targetY = Math.max(-82, Math.min(82, nextY));
+      event.preventDefault();
       requestApply();
     });
 
@@ -2169,6 +2402,74 @@ function setupDraggableApps(): void {
       true
     );
   });
+}
+
+function setupFloatRepulsion(): void {
+  if (floatRepulsionCleanup) {
+    floatRepulsionCleanup();
+    floatRepulsionCleanup = null;
+  }
+
+  const elements = Array.from(document.querySelectorAll<HTMLElement>("[data-float-repel]"));
+  if (elements.length < 2 || motionQuery.matches) {
+    elements.forEach((element) => {
+      element.style.removeProperty("--repel-x");
+      element.style.removeProperty("--repel-y");
+    });
+    return;
+  }
+
+  let frame = 0;
+  let running = true;
+  const clampForce = (value: number): number => Math.max(-18, Math.min(18, value));
+
+  const tick = (): void => {
+    if (!running) return;
+    const entries = elements
+      .filter((element) => element.isConnected)
+      .map((element) => ({ element, rect: element.getBoundingClientRect(), forceX: 0, forceY: 0 }));
+
+    for (let i = 0; i < entries.length; i += 1) {
+      for (let j = i + 1; j < entries.length; j += 1) {
+        const a = entries[i];
+        const b = entries[j];
+        const padding = 24;
+        const overlapX = Math.min(a.rect.right + padding, b.rect.right + padding) - Math.max(a.rect.left - padding, b.rect.left - padding);
+        const overlapY = Math.min(a.rect.bottom + padding, b.rect.bottom + padding) - Math.max(a.rect.top - padding, b.rect.top - padding);
+        if (overlapX <= 0 || overlapY <= 0) continue;
+
+        const dx = a.rect.left + a.rect.width / 2 - (b.rect.left + b.rect.width / 2);
+        const dy = a.rect.top + a.rect.height / 2 - (b.rect.top + b.rect.height / 2);
+        const distance = Math.max(1, Math.hypot(dx, dy));
+        const strength = Math.min(18, Math.min(overlapX, overlapY) * 0.12);
+        const pushX = (dx / distance) * strength;
+        const pushY = (dy / distance) * strength;
+        a.forceX += pushX;
+        a.forceY += pushY;
+        b.forceX -= pushX;
+        b.forceY -= pushY;
+      }
+    }
+
+    entries.forEach(({ element, forceX, forceY }) => {
+      const currentX = Number.parseFloat(element.style.getPropertyValue("--repel-x")) || 0;
+      const currentY = Number.parseFloat(element.style.getPropertyValue("--repel-y")) || 0;
+      element.style.setProperty("--repel-x", `${(currentX + (clampForce(forceX) - currentX) * 0.08).toFixed(2)}px`);
+      element.style.setProperty("--repel-y", `${(currentY + (clampForce(forceY) - currentY) * 0.08).toFixed(2)}px`);
+    });
+
+    frame = window.requestAnimationFrame(tick);
+  };
+
+  frame = window.requestAnimationFrame(tick);
+  floatRepulsionCleanup = () => {
+    running = false;
+    if (frame) window.cancelAnimationFrame(frame);
+    elements.forEach((element) => {
+      element.style.removeProperty("--repel-x");
+      element.style.removeProperty("--repel-y");
+    });
+  };
 }
 
 function setupMotionReveal(): void {
@@ -2248,97 +2549,11 @@ function organicMotion(index: number): { x: number; y: number; rotate: number; d
   };
 }
 
-function createPageExitStage(): HTMLDivElement {
-  const existing = document.querySelector<HTMLDivElement>("[data-page-exit-stage]");
-  if (existing) {
-    existing.replaceChildren();
-    return existing;
-  }
-
-  const stage = document.createElement("div");
-  stage.className = "page-exit-stage";
-  stage.setAttribute("aria-hidden", "true");
-  stage.dataset.pageExitStage = "true";
-  document.body.append(stage);
-  return stage;
-}
-
-function animatePageExitItem(item: HTMLElement, motion: ReturnType<typeof organicMotion>, duration: number, startProgress = 0): void {
-  const startOpacity = Math.max(0.18, 0.52 - startProgress * 0.28);
-  const startX = motion.x * 0.12 * startProgress;
-  const startY = motion.y * 0.22 * startProgress;
-  const startRotate = motion.rotate * 0.18 * startProgress;
-  const exitX = motion.x * 3.1;
-  const exitY = 44 + motion.y * 1.75;
-  const exitRotate = motion.rotate * 1.55;
-
-  item.animate(
-    [
-      {
-        opacity: startOpacity,
-        transform: `translate3d(${startX}px, ${startY}px, 0) rotate(${startRotate}deg) scale(1)`,
-        filter: `blur(${2.2 + Math.min(1.4, startProgress * 2.4)}px) saturate(0.9)`,
-        offset: 0
-      },
-      {
-        opacity: 0.3,
-        transform: `translate3d(${exitX * 0.54}px, ${exitY * 0.48}px, 0) rotate(${exitRotate * 0.56}deg) scale(0.996)`,
-        filter: "blur(3.8px) saturate(0.84)",
-        offset: 0.58
-      },
-      {
-        opacity: 0,
-        transform: `translate3d(${exitX}px, ${exitY}px, 0) rotate(${exitRotate}deg) scale(0.972)`,
-        filter: "blur(6px) saturate(0.78)",
-        offset: 1
-      }
-    ],
-    {
-      duration,
-      delay: Math.min(120, motion.delay * 0.32),
-      easing: "cubic-bezier(0.2, 0.76, 0.16, 1)",
-      fill: "forwards"
-    }
-  );
-}
-
 function restorePageExitStage(): void {
-  // The persistent exit layer is populated before navigation so it survives
-  // Astro swaps. Cleanup is handled by the animation timeout.
-}
-
-function renderPageExitSnapshots(snapshots: PageExitSnapshot[], startProgress = 0): void {
-  if (snapshots.length === 0 || motionQuery.matches) return;
-
-  const stage = createPageExitStage();
-  const remainingDuration = Math.max(900, pageExchangeDuration - 80);
-
-  snapshots.slice(0, 9).forEach((snapshot) => {
-    const item = document.createElement("div");
-    item.className = `${snapshot.className} page-exit-stage__item`;
-    item.innerHTML = snapshot.html;
-    Object.assign(item.style, {
-      position: "fixed",
-      left: `${snapshot.left}px`,
-      top: `${snapshot.top}px`,
-      width: `${snapshot.width}px`,
-      height: `${snapshot.height}px`,
-      margin: "0",
-      pointerEvents: "none",
-      transformOrigin: "50% 42%",
-      overflow: "hidden",
-      opacity: "0.5"
-    });
-    stage.append(item);
-    animatePageExitItem(item, snapshot.motion, remainingDuration, startProgress);
-  });
-
-  window.setTimeout(() => stage.replaceChildren(), remainingDuration + 520);
+  document.querySelector("[data-page-exit-stage]")?.replaceChildren();
 }
 
 function preparePageExitLayer(): boolean {
-  const main = document.querySelector<HTMLElement>(".site-main");
-
   const seed = (window.location.pathname.length * 17 + window.location.search.length * 7) % 13;
   const direction = seed % 2 === 0 ? -1 : 1;
   document.documentElement.style.setProperty("--route-exit-x", `${direction * (10 + seed * 1.6)}vw`);
@@ -2347,53 +2562,8 @@ function preparePageExitLayer(): boolean {
   document.documentElement.style.setProperty("--route-enter-x", `${direction * -(1.4 + seed * 0.08)}rem`);
   document.documentElement.style.setProperty("--route-enter-y", `${2.4 + seed * 0.1}rem`);
   document.documentElement.style.setProperty("--route-enter-rot", `${direction * -(0.18 + seed * 0.02)}deg`);
-
-  if (!main || motionQuery.matches) {
-    document.querySelector("[data-page-exit-stage]")?.replaceChildren();
-    return false;
-  }
-
-  const snapshots = pageMotionTargets(main)
-    .map((element, index): PageExitSnapshot | null => {
-      const rect = element.getBoundingClientRect();
-      if (rect.width < 24 || rect.height < 18) return null;
-      return {
-        html: element.innerHTML,
-        className: element.className || "",
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height,
-        motion: organicMotion(index + seed)
-      };
-    })
-    .filter((snapshot): snapshot is PageExitSnapshot => Boolean(snapshot));
-
-  renderPageExitSnapshots(snapshots);
-
-  pageMotionTargets(main)
-    .slice(0, 8)
-    .forEach((element, index) => {
-      const motion = organicMotion(index + seed);
-      element.animate(
-        [
-          { opacity: 1, transform: "translate3d(0, 0, 0) rotate(0deg)", filter: "blur(0)" },
-          {
-            opacity: 0.56,
-            transform: `translate3d(${motion.x * 0.34}px, ${motion.y * 0.42}px, 0) rotate(${motion.rotate * 0.32}deg)`,
-            filter: "blur(1.6px) saturate(0.92)"
-          }
-        ],
-        {
-          duration: 210,
-          delay: Math.min(70, motion.delay * 0.16),
-          easing: "cubic-bezier(0.2, 0.72, 0.18, 1)",
-          fill: "forwards"
-        }
-      );
-    });
-
-  return snapshots.length > 0;
+  document.querySelector("[data-page-exit-stage]")?.replaceChildren();
+  return false;
 }
 
 function animateCurrentPageOut(): Promise<void> {
@@ -2412,33 +2582,59 @@ function shouldAnimateNavigation(link: HTMLAnchorElement, event: MouseEvent): bo
 
   const url = new URL(link.href, window.location.href);
   if (url.origin !== window.location.origin) return false;
-  if (url.pathname === window.location.pathname && url.search === window.location.search) return false;
+  if (normalizeRoutePath(url.pathname) === normalizeRoutePath(window.location.pathname) && url.search === window.location.search) {
+    return false;
+  }
   return true;
+}
+
+function sameRouteNavigation(link: HTMLAnchorElement, event: MouseEvent): { hash: string } | null {
+  if (event.defaultPrevented || event.button !== 0) return null;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return null;
+  if (link.target || link.hasAttribute("download")) return null;
+  const href = link.getAttribute("href");
+  if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return null;
+
+  const url = new URL(link.href, window.location.href);
+  if (url.origin !== window.location.origin) return null;
+  const current = new URL(window.location.href);
+  if (normalizeRoutePath(url.pathname) !== normalizeRoutePath(current.pathname) || url.search !== current.search) {
+    return null;
+  }
+  return { hash: url.hash };
 }
 
 function setupPageNavigationMotion(): void {
   const handleNavigation = (event: MouseEvent, link: HTMLAnchorElement): void => {
+    if (link.hasAttribute("data-inline-edit-content-id") || link.hasAttribute("data-inline-edit-route")) return;
+    const sameRoute = sameRouteNavigation(link, event);
+    if (sameRoute) {
+      event.stopImmediatePropagation();
+      if (!sameRoute.hash || sameRoute.hash === window.location.hash) event.preventDefault();
+      return;
+    }
     if (!shouldAnimateNavigation(link, event)) return;
-      if (link.hasAttribute("data-inline-edit-content-id") || link.hasAttribute("data-inline-edit-route")) return;
-      if (document.documentElement.dataset.pageLeaving === "true") {
-        event.preventDefault();
-        return;
-      }
-
+    if (document.documentElement.dataset.pageLeaving === "true") {
       event.preventDefault();
-      closeHeaderPopovers();
-      const targetHref = link.href;
+      event.stopImmediatePropagation();
+      return;
+    }
 
-      void animateCurrentPageOut().then(async () => {
-        try {
-          pendingPageFlyIn = true;
-          await navigate(targetHref);
-        } catch {
-          window.location.assign(targetHref);
-        } finally {
-          delete document.documentElement.dataset.pageLeaving;
-        }
-      });
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closeHeaderPopovers();
+    const targetHref = link.href;
+
+    void animateCurrentPageOut().then(async () => {
+      try {
+        pendingPageFlyIn = true;
+        await navigate(targetHref);
+      } catch {
+        window.location.assign(targetHref);
+      } finally {
+        delete document.documentElement.dataset.pageLeaving;
+      }
+    });
   };
 
   window.__nanatoNavigateLink = handleNavigation;
@@ -2531,10 +2727,13 @@ function setupPageFlyIn(): void {
 
 function setupPageInteractions(): void {
   applyStoredVisualState();
+  setupMusicRouteState();
   setHeaderOffset();
   setupHeaderState();
   setupRoomLighting();
   setupNavigation();
+  setupActiveNavigation();
+  playHomeThemeHint();
   setupProjectMenu();
   setupAccountMenu();
   setupDownloadVaultState();
@@ -2547,6 +2746,7 @@ function setupPageInteractions(): void {
   setupMusicWidget();
   setupDeskStickers();
   setupDraggableApps();
+  setupFloatRepulsion();
   setupPageNavigationMotion();
   setupPageFlyIn();
   setupMotionReveal();

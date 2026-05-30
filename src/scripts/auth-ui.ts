@@ -150,6 +150,8 @@ function setDiagnosticResult(root: HTMLElement, message: string, tone: "neutral"
 
 function setupApiDiagnostics(): void {
   qsa<HTMLElement>("[data-api-diagnostics]").forEach((panel) => {
+    if (panel.dataset.apiDiagnosticsReady === "true") return;
+    panel.dataset.apiDiagnosticsReady = "true";
     const base = qs<HTMLElement>("[data-api-base]", panel);
     const mode = qs<HTMLElement>("[data-api-mode]", panel);
     const button = qs<HTMLButtonElement>("[data-api-debug-check]", panel);
@@ -265,6 +267,8 @@ async function handleRegister(form: HTMLFormElement): Promise<void> {
 
 function setupAuthForms(): void {
   qsa<HTMLFormElement>("[data-auth-form]").forEach((form) => {
+    if (form.dataset.authFormReady === "true") return;
+    form.dataset.authFormReady = "true";
     loadChallenge(form);
 
     qs<HTMLButtonElement>("[data-challenge-reload]", form)?.addEventListener("click", () => {
@@ -315,6 +319,8 @@ async function logout(redirectTo = "/login/"): Promise<void> {
 
 function setupLogoutButtons(): void {
   qsa<HTMLButtonElement>("[data-auth-logout]").forEach((button) => {
+    if (button.dataset.authLogoutReady === "true") return;
+    button.dataset.authLogoutReady = "true";
     button.addEventListener("click", () => {
       logout();
     });
@@ -335,6 +341,8 @@ function writeUserFields(root: ParentNode, user: ApiUser): void {
 async function setupDashboard(): Promise<void> {
   const root = qs<HTMLElement>("[data-dashboard-page]");
   if (!root) return;
+  if (root.dataset.dashboardReady === "true") return;
+  root.dataset.dashboardReady = "true";
 
   const loading = qs<HTMLElement>("[data-dashboard-loading]", root);
   const signedOut = qs<HTMLElement>("[data-dashboard-signed-out]", root);
@@ -389,6 +397,8 @@ async function setupDashboard(): Promise<void> {
 function setupPasswordChange(): void {
   const form = qs<HTMLFormElement>("[data-password-change-form]");
   if (!form) return;
+  if (form.dataset.passwordChangeReady === "true") return;
+  form.dataset.passwordChangeReady = "true";
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -856,6 +866,8 @@ function renderAdminData(container: HTMLElement, view: string, data: unknown): v
 async function setupAdminPages(): Promise<void> {
   const root = qs<HTMLElement>("[data-admin-page]");
   if (!root) return;
+  if (root.dataset.adminReady === "true") return;
+  root.dataset.adminReady = "true";
 
   const loading = qs<HTMLElement>("[data-admin-loading]", root);
   const unauthenticated = qs<HTMLElement>("[data-admin-unauthenticated]", root);
@@ -902,13 +914,6 @@ async function setupAdminPages(): Promise<void> {
     setHidden(unavailable, false);
   }
 }
-
-setupApiDiagnostics();
-setupAuthForms();
-setupLogoutButtons();
-setupDashboard();
-setupPasswordChange();
-setupAdminPages();
 
 function renderEditorList(container: HTMLElement, items: ContentItem[]): void {
   clearElement(container);
@@ -1089,6 +1094,7 @@ function setupEditorEnhancements(form: HTMLFormElement): void {
   const fileInput = qs<HTMLInputElement>("[data-editor-import]", form);
   const importButton = qs<HTMLButtonElement>("[data-editor-import-trigger]", form);
   const copyButton = qs<HTMLButtonElement>("[data-editor-copy]", form);
+  const buildButton = qs<HTMLButtonElement>("[data-editor-build]", form);
 
   bodyInput?.addEventListener("input", () => scheduleEditorPreview(form));
   importButton?.addEventListener("click", () => fileInput?.click());
@@ -1123,6 +1129,23 @@ function setupEditorEnhancements(form: HTMLFormElement): void {
       setStatus(form, "Markdown source copied.", "success");
     } catch {
       setStatus(form, "Clipboard access was blocked by the browser.", "error");
+    }
+  });
+
+  buildButton?.addEventListener("click", async () => {
+    buildButton.disabled = true;
+    setStatus(form, "Running npm run build from the backend workspace...", "neutral");
+    try {
+      const result = await withApiTimeout(
+        apiFetch<{ message: string; output?: string }>("/api/editor/build", { method: "POST" }),
+        "npm run build did not finish within 3 minutes. Check the backend terminal for progress.",
+        180000
+      );
+      setStatus(form, result.message, "success");
+    } catch (error) {
+      setStatus(form, formatApiError(error), "error");
+    } finally {
+      buildButton.disabled = false;
     }
   });
 }
@@ -1174,6 +1197,8 @@ function bringEditorIntoView(root: HTMLElement): void {
 async function setupEditorPage(): Promise<void> {
   const root = qs<HTMLElement>("[data-editor-page]");
   if (!root) return;
+  if (root.dataset.editorReady === "true") return;
+  root.dataset.editorReady = "true";
 
   const loading = qs<HTMLElement>("[data-editor-loading]", root);
   const signedOut = qs<HTMLElement>("[data-editor-signed-out]", root);
@@ -1256,4 +1281,15 @@ async function setupEditorPage(): Promise<void> {
   });
 }
 
-setupEditorPage();
+function setupAuthInteractions(): void {
+  setupApiDiagnostics();
+  setupAuthForms();
+  setupLogoutButtons();
+  void setupDashboard();
+  setupPasswordChange();
+  void setupAdminPages();
+  void setupEditorPage();
+}
+
+setupAuthInteractions();
+document.addEventListener("astro:page-load", setupAuthInteractions);

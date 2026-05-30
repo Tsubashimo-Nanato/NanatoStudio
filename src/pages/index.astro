@@ -12,11 +12,6 @@ const featuredDocs = [aiFormula, ...docs.filter((doc) => contentSlug(doc) !== "a
   .filter((doc): doc is (typeof docs)[number] => Boolean(doc))
   .slice(0, 4);
 const latestPost = posts[0];
-const latestPostTitle = latestPost?.data.title === "Blog" ? "Studio Log" : latestPost?.data.title;
-const latestPostDescription =
-  latestPost?.data.description === "Original MkDocs blog placeholder preserved as the first Astro blog entry."
-    ? "Notes from the rebuild: architecture, writing workflow, and the shape of the studio."
-    : latestPost?.data.description;
 
 const destinations = [
   { href: "/blog/", label: "Blogs", detail: `${posts.length} entries` },
@@ -81,8 +76,8 @@ const destinations = [
     </a>
     <a class="feature-tile" href="/blog/">
       <span class="feature-tile__meta">Latest writing</span>
-      <strong>{latestPostTitle ?? "Studio notes"}</strong>
-      <span>{latestPostDescription ?? "A place for project commentary and design decisions."}</span>
+      <strong>{latestPost?.data.title ?? "Studio notes"}</strong>
+      <span>{latestPost?.data.description ?? "A place for project commentary and design decisions."}</span>
     </a>
   </section>
 

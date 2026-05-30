@@ -4,18 +4,17 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
 <BaseLayout title="Login" description="Sign in to Nanato Studio with the FastAPI account backend." pageClass="entry-page login-page">
-  <section class="utility-hero auth-shell page-enter" aria-labelledby="login-title">
-    <div class="utility-copy">
+  <section class="auth-station page-enter" aria-labelledby="login-title">
+    <div class="auth-station__note">
       <p class="eyebrow">Account access</p>
-      <h1 id="login-title">Sign in to the studio workspace.</h1>
+      <h1 id="login-title">Studio key</h1>
       <p>
-        The form requests a server-generated challenge, sends credentials to the FastAPI backend, and uses the returned
-        HttpOnly session cookie for authenticated pages.
+        Sign in once to open the dashboard, assigned Markdown editor, and admin tools allowed by the backend session.
       </p>
-      <div class="status-row" aria-label="Login behavior">
-        <span>Server challenge</span>
+      <div class="auth-station__list" aria-label="Login access">
         <span>HttpOnly session</span>
-        <span>Role-aware redirect</span>
+        <span>Editor permissions</span>
+        <span>Local API check</span>
       </div>
     </div>
 
